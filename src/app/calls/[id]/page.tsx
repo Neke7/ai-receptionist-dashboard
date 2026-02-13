@@ -10,6 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
+// ✅ IMPORTANT: call the Next.js API route (works on localhost + Vercel)
+const API_BASE = "";
+
 type CallOutcome = "booked" | "info_only" | "follow_up" | "unknown";
 
 type CallRecord = {
@@ -36,9 +39,6 @@ type CallRecord = {
   call_successful: boolean | null;
 };
 
-const BACKEND =
-  process.env.NEXT_PUBLIC_BACKEND_URL?.trim() || "http://localhost:3001";
-
 function normalizeOutcome(
   call_outcome: string | null | undefined,
   appointment_booked: boolean | null | undefined
@@ -49,7 +49,6 @@ function normalizeOutcome(
   if (raw === "info_only" || raw === "info only") return "info_only";
   if (raw === "follow_up" || raw === "follow up") return "follow_up";
 
-  // If outcome not set, derive from appointment_booked:
   if (appointment_booked === true) return "booked";
   if (appointment_booked === false) return "info_only";
 
@@ -65,7 +64,6 @@ export default function CallDetailsPage() {
   const [saving, setSaving] = useState(false);
   const [call, setCall] = useState<CallRecord | null>(null);
 
-  // Editable form state
   const [form, setForm] = useState({
     caller_name: "",
     caller_phone: "",
@@ -83,7 +81,6 @@ export default function CallDetailsPage() {
   });
 
   const statusBadge = useMemo(() => {
-    // Single source of truth: call_outcome (derived if needed)
     const outcome = normalizeOutcome(
       call?.call_outcome ?? form.call_outcome,
       call?.appointment_booked ?? form.appointment_booked
@@ -98,14 +95,17 @@ export default function CallDetailsPage() {
   async function loadCall() {
     setLoading(true);
     try {
-      const res = await fetch(`${BACKEND}/api/calls/${id}`, { cache: "no-store" });
-      if (!res.ok) throw new Error("Failed to load call");
+      const res = await fetch(`${API_BASE}/api/calls/${id}`, { cache: "no-store" });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`API /api/calls/${id} failed (${res.status}) ${text}`);
+      }
+
       const data: CallRecord = await res.json();
       setCall(data);
 
       const derivedOutcome = normalizeOutcome(data.call_outcome, data.appointment_booked);
 
-      // ✅ IMPORTANT: call_outcome appears exactly ONCE here (no duplicate key)
       setForm({
         caller_name: data.caller_name ?? "",
         caller_phone: data.caller_phone ?? "",
@@ -124,14 +124,13 @@ export default function CallDetailsPage() {
     } catch (e) {
       console.error(e);
       alert("Could not load this call. Go back and try again.");
-      router.push("/");
+      router.push("/calls");
     } finally {
       setLoading(false);
     }
   }
 
   function setOutcome(outcome: CallOutcome) {
-    // Keep appointment_booked consistent with outcome when user sets outcome buttons
     if (outcome === "booked") {
       setForm((f) => ({ ...f, call_outcome: outcome, appointment_booked: true }));
       return;
@@ -140,13 +139,10 @@ export default function CallDetailsPage() {
       setForm((f) => ({ ...f, call_outcome: outcome, appointment_booked: false }));
       return;
     }
-    // follow_up / unknown doesn't force appointment_booked
     setForm((f) => ({ ...f, call_outcome: outcome }));
   }
 
   function toggleAppointmentBooked(checked: boolean) {
-    // If they check booked, ensure outcome becomes booked.
-    // If they uncheck booked and outcome was booked, move to info_only.
     setForm((f) => {
       const nextOutcome =
         checked ? "booked" : f.call_outcome === "booked" ? "info_only" : f.call_outcome;
@@ -157,8 +153,7 @@ export default function CallDetailsPage() {
   async function saveChanges() {
     setSaving(true);
     try {
-      // ✅ IMPORTANT: call_outcome appears exactly ONCE here (no duplicate key)
-      const res = await fetch(`${BACKEND}/api/calls/${id}`, {
+      const res = await fetch(`${API_BASE}/api/calls/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -178,12 +173,16 @@ export default function CallDetailsPage() {
         }),
       });
 
-      if (!res.ok) throw new Error("Save failed");
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`Save failed (${res.status}) ${text}`);
+      }
+
       await loadCall();
       alert("Saved ✅");
     } catch (e) {
       console.error(e);
-      alert("Save failed. Check backend terminal for errors.");
+      alert("Save failed. Check backend logs.");
     } finally {
       setSaving(false);
     }
@@ -218,7 +217,7 @@ export default function CallDetailsPage() {
 
           <div className="flex items-center gap-2">
             <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>
-            <Button variant="secondary" onClick={() => router.push("/")} disabled={saving}>
+            <Button variant="secondary" onClick={() => router.push("/calls")} disabled={saving}>
               Back
             </Button>
             <Button onClick={saveChanges} disabled={saving}>
@@ -368,13 +367,13 @@ export default function CallDetailsPage() {
                 </Button>
               </div>
 
-              {/* Keep a raw text input too (in case you want custom outcomes later) */}
               <Input
                 value={form.call_outcome}
                 onChange={(e) =>
                   setForm({
                     ...form,
-                    call_outcome: (e.target.value.trim().toLowerCase() as CallOutcome) || "unknown",
+                    call_outcome:
+                      (e.target.value.trim().toLowerCase() as CallOutcome) || "unknown",
                   })
                 }
                 placeholder="booked / info_only / follow_up"
@@ -404,5 +403,4 @@ export default function CallDetailsPage() {
     </AppShell>
   );
 }
-
 
