@@ -3,12 +3,16 @@ import { NextResponse } from "next/server";
 const BACKEND =
   process.env.NEXT_PUBLIC_BACKEND_URL?.trim() || "http://localhost:3001";
 
+type Params = { id: string };
+
 export async function GET(
   _req: Request,
-  { params }: { params: { id: string } }
+  ctx: { params: Promise<Params> }
 ) {
   try {
-    const res = await fetch(`${BACKEND}/api/calls/${params.id}`, {
+    const { id } = await ctx.params;
+
+    const res = await fetch(`${BACKEND}/api/calls/${id}`, {
       cache: "no-store",
     });
 
@@ -21,21 +25,19 @@ export async function GET(
     });
   } catch (err) {
     console.error(err);
-    return NextResponse.json(
-      { error: "Failed to reach backend" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to reach backend" }, { status: 500 });
   }
 }
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  ctx: { params: Promise<Params> }
 ) {
   try {
+    const { id } = await ctx.params;
     const body = await req.json();
 
-    const res = await fetch(`${BACKEND}/api/calls/${params.id}`, {
+    const res = await fetch(`${BACKEND}/api/calls/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -50,9 +52,6 @@ export async function PATCH(
     });
   } catch (err) {
     console.error(err);
-    return NextResponse.json(
-      { error: "Failed to reach backend" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to reach backend" }, { status: 500 });
   }
 }
