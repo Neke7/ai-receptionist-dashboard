@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 
 import AppShell from "@/components/layout/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -13,19 +16,24 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const BACKEND =
   process.env.NEXT_PUBLIC_BACKEND_URL?.trim() || "http://localhost:3001";
 
 type CallOutcome = "booked" | "info_only" | "follow_up";
+type Filter = "all" | "booked" | "info_only" | "follow_up";
 
 type CallRecord = {
   id: string;
   createdAt: string;
-
   caller_name: string | null;
   caller_phone: string | null;
   intent: string | null;
@@ -51,19 +59,20 @@ function normalizeOutcome(call: CallRecord): CallOutcome {
   return "info_only";
 }
 
-function outcomeBadge(outcome: CallOutcome) {
-  if (outcome === "booked")
-    return { label: "Booked", variant: "default" as const };
+function statusBadge(call: CallRecord) {
+  const outcome = normalizeOutcome(call);
+  if (outcome === "booked") return { label: "Booked", variant: "default" as const };
   if (outcome === "follow_up")
     return { label: "Follow Up", variant: "secondary" as const };
   return { label: "Info Only", variant: "secondary" as const };
 }
 
-export default function DashboardPage() {
+export default function CallsPage() {
   const router = useRouter();
 
   const [calls, setCalls] = useState<CallRecord[]>([]);
   const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<Filter>("all");
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
@@ -89,18 +98,28 @@ export default function DashboardPage() {
 
   const filtered = useMemo(() => {
     const s = search.toLowerCase();
-    return calls.filter(
-      (c) =>
-        (c.caller_name || "").toLowerCase().includes(s) ||
-        (c.caller_phone || "").includes(search) ||
-        (c.intent || "").toLowerCase().includes(s)
-    );
-  }, [calls, search]);
 
-  const stats = useMemo(() => {
-    let booked = 0;
-    let follow = 0;
-    let info = 0;
+    return calls
+      .slice()
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .filter((c) => {
+        const matchesSearch =
+          (c.caller_name || "").toLowerCase().includes(s) ||
+          (c.caller_phone || "").includes(search) ||
+          (c.intent || "").toLowerCase().includes(s);
+
+        if (!matchesSearch) return false;
+
+        const outcome = normalizeOutcome(c);
+        if (filter === "all") return true;
+        return outcome === filter;
+      });
+  }, [calls, search, filter]);
+
+  const counts = useMemo(() => {
+    let booked = 0,
+      info = 0,
+      follow = 0;
 
     for (const c of calls) {
       const o = normalizeOutcome(c);
@@ -109,87 +128,87 @@ export default function DashboardPage() {
       else info++;
     }
 
-    return { total: calls.length, booked, follow, info };
+    return { booked, info, follow, total: calls.length };
   }, [calls]);
 
-  // Recent Calls: newest first, show max 8
-  const recent = useMemo(() => {
-    return [...filtered]
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      )
-      .slice(0, 8);
-  }, [filtered]);
-
   return (
-    <AppShell title="Dashboard">
+    <AppShell title="Calls">
       <div className="space-y-6">
-        {/* Top bar */}
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-3">
+        {/* Top controls */}
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
             <Input
               placeholder="Search by name, phone, or intent..."
               className="w-full md:w-[360px]"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-          </div>
 
-          <div className="flex items-center gap-4">
-            <div className="text-sm text-muted-foreground">
-              {lastUpdated
-                ? `Last updated: ${lastUpdated.toLocaleString()}`
-                : "Last updated: —"}
-            </div>
+            <Select value={filter} onValueChange={(v) => setFilter(v as Filter)}>
+              <SelectTrigger className="w-full md:w-[220px]">
+                <SelectValue placeholder="Filter status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="booked">Booked</SelectItem>
+                <SelectItem value="info_only">Info Only</SelectItem>
+                <SelectItem value="follow_up">Follow Up</SelectItem>
+              </SelectContent>
+            </Select>
 
             <Button onClick={loadCalls} disabled={refreshing}>
               {refreshing ? "Refreshing..." : "Refresh"}
             </Button>
           </div>
+
+          <div className="text-sm text-muted-foreground">
+            {lastUpdated ? `Last updated: ${lastUpdated.toLocaleString()}` : "Last updated: —"}
+          </div>
         </div>
 
-        {/* Stats (MATCHES Calls page statuses) */}
+        {/* Summary cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Total</CardTitle>
             </CardHeader>
-            <CardContent className="text-3xl font-bold">{stats.total}</CardContent>
+            <CardContent className="text-3xl font-bold">{counts.total}</CardContent>
           </Card>
 
           <Card>
             <CardHeader>
               <CardTitle>Booked</CardTitle>
             </CardHeader>
-            <CardContent className="text-3xl font-bold">{stats.booked}</CardContent>
+            <CardContent className="text-3xl font-bold">{counts.booked}</CardContent>
           </Card>
 
           <Card>
             <CardHeader>
               <CardTitle>Info Only</CardTitle>
             </CardHeader>
-            <CardContent className="text-3xl font-bold">{stats.info}</CardContent>
+            <CardContent className="text-3xl font-bold">{counts.info}</CardContent>
           </Card>
 
           <Card>
             <CardHeader>
               <CardTitle>Follow Up</CardTitle>
             </CardHeader>
-            <CardContent className="text-3xl font-bold">{stats.follow}</CardContent>
+            <CardContent className="text-3xl font-bold">{counts.follow}</CardContent>
           </Card>
         </div>
 
-        {/* Recent Calls */}
+        {/* Calls table */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Recent Calls</CardTitle>
-            <Button variant="outline" onClick={() => router.push("/calls")}>
-              View all
-            </Button>
+          <CardHeader>
+            <CardTitle>All Calls</CardTitle>
           </CardHeader>
 
           <CardContent className="space-y-3">
+            <div className="text-sm text-muted-foreground">
+              Showing{" "}
+              <span className="font-medium text-foreground">{filtered.length}</span> call(s)
+            </div>
+
             <Table>
               <TableHeader>
                 <TableRow>
@@ -197,21 +216,20 @@ export default function DashboardPage() {
                   <TableHead>Status</TableHead>
                   <TableHead>Intent</TableHead>
                   <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
 
               <TableBody>
-                {recent.map((call) => {
-                  const outcome = normalizeOutcome(call);
-                  const badge = outcomeBadge(outcome);
-
+                {filtered.map((call) => {
+                  const badge = statusBadge(call);
                   return (
-                    <TableRow key={call.id}>
+                    <TableRow
+                      key={call.id}
+                      className="cursor-pointer"
+                      onClick={() => router.push(`/calls/${call.id}`)}
+                    >
                       <TableCell>
-                        <div className="font-medium">
-                          {call.caller_name || "Unknown Caller"}
-                        </div>
+                        <div className="font-medium">{call.caller_name || "Unknown Caller"}</div>
                         <div className="text-sm text-muted-foreground">
                           {call.caller_phone || "—"}
                         </div>
@@ -223,27 +241,18 @@ export default function DashboardPage() {
 
                       <TableCell>{call.intent || "—"}</TableCell>
 
-                      <TableCell>
-                        {new Date(call.createdAt).toLocaleString()}
-                      </TableCell>
-
-                      <TableCell className="text-right">
-                        <Button
-                          size="sm"
-                          onClick={() => router.push(`/calls/${call.id}`)}
-                        >
-                          View
-                        </Button>
-                      </TableCell>
+                      <TableCell>{new Date(call.createdAt).toLocaleString()}</TableCell>
                     </TableRow>
                   );
                 })}
               </TableBody>
             </Table>
 
-            <div className="text-sm text-muted-foreground">
-              Showing {recent.length} of {filtered.length} matching calls.
-            </div>
+            {filtered.length === 0 && (
+              <div className="text-sm text-muted-foreground">
+                No calls match your search/filter.
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
