@@ -16,25 +16,23 @@ export function middleware(req: NextRequest) {
   // Allow Next.js internals + public files
   if (
     pathname.startsWith("/_next") ||
-    pathname.startsWith("/favicon.ico") ||
-    pathname.startsWith("/robots.txt") ||
-    pathname.startsWith("/sitemap.xml")
+    pathname === "/favicon.ico" ||
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap.xml"
   ) {
     return NextResponse.next();
   }
 
-  // ✅ Protect these routes (dashboard + API proxy routes)
+  // Protect these routes
   const isProtected =
-    pathname === "/" ||
-    pathname.startsWith("/calls") ||
-    pathname.startsWith("/api");
+    pathname === "/" || pathname.startsWith("/calls") || pathname.startsWith("/api");
 
   if (!isProtected) return NextResponse.next();
 
   const user = process.env.DASH_USER || "";
   const pass = process.env.DASH_PASS || "";
 
-  // If env vars are missing, lock it down (safer than accidentally open)
+  // If env vars are missing, lock it down
   if (!user || !pass) return unauthorized();
 
   const auth = req.headers.get("authorization");
@@ -54,7 +52,6 @@ export function middleware(req: NextRequest) {
   return unauthorized();
 }
 
-// Apply middleware to all routes (we already allowlist _next above)
 export const config = {
   matcher: ["/:path*"],
 };

@@ -25,8 +25,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const BACKEND =
-  process.env.NEXT_PUBLIC_BACKEND_URL?.trim() || "http://localhost:3001";
+// ✅ IMPORTANT: call the Next.js API route (works on localhost + Vercel)
+const API_BASE = "";
 
 type CallOutcome = "booked" | "info_only" | "follow_up";
 type Filter = "all" | "booked" | "info_only" | "follow_up";
@@ -62,8 +62,7 @@ function normalizeOutcome(call: CallRecord): CallOutcome {
 function statusBadge(call: CallRecord) {
   const outcome = normalizeOutcome(call);
   if (outcome === "booked") return { label: "Booked", variant: "default" as const };
-  if (outcome === "follow_up")
-    return { label: "Follow Up", variant: "secondary" as const };
+  if (outcome === "follow_up") return { label: "Follow Up", variant: "secondary" as const };
   return { label: "Info Only", variant: "secondary" as const };
 }
 
@@ -79,13 +78,25 @@ export default function CallsPage() {
   async function loadCalls() {
     setRefreshing(true);
     try {
-      const res = await fetch(`${BACKEND}/api/calls`, { cache: "no-store" });
+      const res = await fetch(`${API_BASE}/api/calls`, { cache: "no-store" });
+
+      // ✅ Force auth prompt if middleware returns 401
+      if (res.status === 401) {
+        window.location.reload();
+        return;
+      }
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`API /api/calls failed (${res.status}) ${text}`);
+      }
+
       const data = await res.json();
       setCalls(Array.isArray(data) ? data : []);
       setLastUpdated(new Date());
     } catch (e) {
       console.error(e);
-      alert("Failed to load calls. Check backend is running on port 3001.");
+      alert("Failed to load calls from /api/calls.");
     } finally {
       setRefreshing(false);
     }
@@ -205,8 +216,7 @@ export default function CallsPage() {
 
           <CardContent className="space-y-3">
             <div className="text-sm text-muted-foreground">
-              Showing{" "}
-              <span className="font-medium text-foreground">{filtered.length}</span> call(s)
+              Showing <span className="font-medium text-foreground">{filtered.length}</span> call(s)
             </div>
 
             <Table>
@@ -230,9 +240,7 @@ export default function CallsPage() {
                     >
                       <TableCell>
                         <div className="font-medium">{call.caller_name || "Unknown Caller"}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {call.caller_phone || "—"}
-                        </div>
+                        <div className="text-sm text-muted-foreground">{call.caller_phone || "—"}</div>
                       </TableCell>
 
                       <TableCell>
@@ -240,7 +248,6 @@ export default function CallsPage() {
                       </TableCell>
 
                       <TableCell>{call.intent || "—"}</TableCell>
-
                       <TableCell>{new Date(call.createdAt).toLocaleString()}</TableCell>
                     </TableRow>
                   );
@@ -249,9 +256,7 @@ export default function CallsPage() {
             </Table>
 
             {filtered.length === 0 && (
-              <div className="text-sm text-muted-foreground">
-                No calls match your search/filter.
-              </div>
+              <div className="text-sm text-muted-foreground">No calls match your search/filter.</div>
             )}
           </CardContent>
         </Card>

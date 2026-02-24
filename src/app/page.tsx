@@ -17,8 +17,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 
-const BACKEND =
-  process.env.NEXT_PUBLIC_BACKEND_URL?.trim() || "http://localhost:3001";
+// ✅ IMPORTANT: call the Next.js API route (works on localhost + Vercel)
+const API_BASE = "";
 
 type CallOutcome = "booked" | "info_only" | "follow_up";
 
@@ -52,10 +52,8 @@ function normalizeOutcome(call: CallRecord): CallOutcome {
 }
 
 function outcomeBadge(outcome: CallOutcome) {
-  if (outcome === "booked")
-    return { label: "Booked", variant: "default" as const };
-  if (outcome === "follow_up")
-    return { label: "Follow Up", variant: "secondary" as const };
+  if (outcome === "booked") return { label: "Booked", variant: "default" as const };
+  if (outcome === "follow_up") return { label: "Follow Up", variant: "secondary" as const };
   return { label: "Info Only", variant: "secondary" as const };
 }
 
@@ -70,13 +68,28 @@ export default function DashboardPage() {
   async function loadCalls() {
     setRefreshing(true);
     try {
-      const res = await fetch(`${BACKEND}/api/calls`, { cache: "no-store" });
+      const res = await fetch(`${API_BASE}/api/calls`, { cache: "no-store" });
+
+      // ✅ If middleware is protecting /api and you're not authed yet,
+      // force a reload so Chrome shows the Basic Auth popup.
+      if (res.status === 401) {
+        window.location.reload();
+        return;
+      }
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`API /api/calls failed (${res.status}) ${text}`);
+      }
+
       const data = await res.json();
       setCalls(Array.isArray(data) ? data : []);
       setLastUpdated(new Date());
     } catch (e) {
       console.error(e);
-      alert("Failed to load calls. Check backend is running on port 3001.");
+      alert(
+        "Failed to load calls from /api/calls.\n\nIf you're running locally, make sure your Next.js dev server is running (npm run dev)."
+      );
     } finally {
       setRefreshing(false);
     }
@@ -112,13 +125,9 @@ export default function DashboardPage() {
     return { total: calls.length, booked, follow, info };
   }, [calls]);
 
-  // Recent Calls: newest first, show max 8
   const recent = useMemo(() => {
     return [...filtered]
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      )
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 8);
   }, [filtered]);
 
@@ -138,9 +147,7 @@ export default function DashboardPage() {
 
           <div className="flex items-center gap-4">
             <div className="text-sm text-muted-foreground">
-              {lastUpdated
-                ? `Last updated: ${lastUpdated.toLocaleString()}`
-                : "Last updated: —"}
+              {lastUpdated ? `Last updated: ${lastUpdated.toLocaleString()}` : "Last updated: —"}
             </div>
 
             <Button onClick={loadCalls} disabled={refreshing}>
@@ -149,7 +156,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Stats (MATCHES Calls page statuses) */}
+        {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardHeader>
@@ -209,9 +216,7 @@ export default function DashboardPage() {
                   return (
                     <TableRow key={call.id}>
                       <TableCell>
-                        <div className="font-medium">
-                          {call.caller_name || "Unknown Caller"}
-                        </div>
+                        <div className="font-medium">{call.caller_name || "Unknown Caller"}</div>
                         <div className="text-sm text-muted-foreground">
                           {call.caller_phone || "—"}
                         </div>
@@ -223,15 +228,10 @@ export default function DashboardPage() {
 
                       <TableCell>{call.intent || "—"}</TableCell>
 
-                      <TableCell>
-                        {new Date(call.createdAt).toLocaleString()}
-                      </TableCell>
+                      <TableCell>{new Date(call.createdAt).toLocaleString()}</TableCell>
 
                       <TableCell className="text-right">
-                        <Button
-                          size="sm"
-                          onClick={() => router.push(`/calls/${call.id}`)}
-                        >
+                        <Button size="sm" onClick={() => router.push(`/calls/${call.id}`)}>
                           View
                         </Button>
                       </TableCell>

@@ -96,6 +96,13 @@ export default function CallDetailsPage() {
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/api/calls/${id}`, { cache: "no-store" });
+
+      // ✅ Force auth prompt if middleware returns 401
+      if (res.status === 401) {
+        window.location.reload();
+        return;
+      }
+
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         throw new Error(`API /api/calls/${id} failed (${res.status}) ${text}`);
@@ -172,6 +179,12 @@ export default function CallDetailsPage() {
           call_successful: form.call_successful,
         }),
       });
+
+      // ✅ Force auth prompt if middleware returns 401
+      if (res.status === 401) {
+        window.location.reload();
+        return;
+      }
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");
