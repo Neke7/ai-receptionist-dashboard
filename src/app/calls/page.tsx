@@ -79,12 +79,12 @@ export default function CallsPage() {
     setRefreshing(true);
     try {
       const res = await fetch(`${API_BASE}/api/calls`, { cache: "no-store" });
-
-      // ✅ Force auth prompt if middleware returns 401
       if (res.status === 401) {
-        window.location.reload();
+        router.push("/login");
         return;
       }
+
+     
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");

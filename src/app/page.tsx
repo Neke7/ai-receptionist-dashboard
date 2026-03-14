@@ -69,13 +69,12 @@ export default function DashboardPage() {
     setRefreshing(true);
     try {
       const res = await fetch(`${API_BASE}/api/calls`, { cache: "no-store" });
-
-      // ✅ If middleware is protecting /api and you're not authed yet,
-      // force a reload so Chrome shows the Basic Auth popup.
       if (res.status === 401) {
-        window.location.reload();
+        router.push("/login");
         return;
       }
+
+      
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");
