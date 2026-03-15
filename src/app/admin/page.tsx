@@ -1,78 +1,56 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
-type ClientRow = {
+type ClientRecord = {
   id: string;
   name: string;
   email: string;
   apiKey: string;
   retellAgentId: string | null;
-  createdAt: string;
+  createdAt?: string;
 };
 
 export default function AdminPage() {
-  const [clients, setClients] = useState<ClientRow[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState("");
-
+  const [clients, setClients] = useState<ClientRecord[]>([]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [retellAgentId, setRetellAgentId] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   async function loadClients() {
     setLoading(true);
-    setErr("");
+    setError("");
+
     try {
       const res = await fetch("/api/admin/clients", { cache: "no-store" });
       const text = await res.text();
 
-      if (!res.ok) {
-        setErr(`Failed to load clients (${res.status}): ${text}`);
-        return;
+      let data: unknown = [];
+      try {
+        data = text ? JSON.parse(text) : [];
+      } catch {
+        data = [];
       }
 
-      const data = JSON.parse(text);
-      setClients(Array.isArray(data) ? data : []);
-    } catch (e: any) {
-      setErr(e?.message || "Failed to load clients");
+      if (!res.ok) {
+        throw new Error(
+          typeof data === "object" && data && "error" in (data as Record<string, unknown>)
+            ? String((data as Record<string, unknown>).error)
+            : `Failed to load clients (${res.status})`
+        );
+      }
+
+      setClients(Array.isArray(data) ? (data as ClientRecord[]) : []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load clients");
+      setClients([]);
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function createClient() {
-    setErr("");
-    try {
-      const payload = {
-        name: name.trim(),
-        email: email.trim(),
-        apiKey: apiKey.trim(),
-        retellAgentId: retellAgentId.trim() || null,
-      };
-
-      const res = await fetch("/api/admin/clients", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const text = await res.text();
-
-      if (!res.ok) {
-        setErr(`Failed to create client (${res.status}): ${text}`);
-        return;
-      }
-
-      // clear form + refresh list
-      setName("");
-      setEmail("");
-      setApiKey("");
-      setRetellAgentId("");
-      await loadClients();
-    } catch (e: any) {
-      setErr(e?.message || "Failed to create client");
     }
   }
 
@@ -80,185 +58,257 @@ export default function AdminPage() {
     loadClients();
   }, []);
 
+  async function handleCreateClient(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/admin/clients", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          apiKey,
+          retellAgentId: retellAgentId.trim() || null,
+        }),
+      });
+
+      const text = await res.text();
+
+      let data: unknown = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = {};
+      }
+
+      if (!res.ok) {
+        throw new Error(
+          typeof data === "object" && data && "error" in (data as Record<string, unknown>)
+            ? String((data as Record<string, unknown>).error)
+            : `Failed to create client (${res.status})`
+        );
+      }
+
+      setName("");
+      setEmail("");
+      setApiKey("");
+      setRetellAgentId("");
+      await loadClients();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create client");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
-    <main style={{ padding: 24, maxWidth: 1000 }}>
-      <h1 style={{ fontSize: 28, fontWeight: 700 }}>Admin</h1>
-      <p style={{ opacity: 0.8 }}>
+    <main style={{ padding: 24 }}>
+      <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 8 }}>Admin</h1>
+      <p style={{ color: "#666", marginBottom: 24 }}>
         Create clients + map Retell Agent IDs to tenants.
       </p>
 
-      {err ? (
+      {error ? (
         <div
           style={{
-            marginTop: 12,
-            padding: 12,
-            border: "1px solid #fca5a5",
-            background: "#fef2f2",
-            color: "#991b1b",
+            color: "crimson",
+            border: "1px solid #f2c2c2",
             borderRadius: 8,
+            padding: 12,
+            marginBottom: 24,
           }}
         >
-          <b>Error:</b> {err}
+          Error: {error}
         </div>
       ) : null}
 
       <section
         style={{
-          marginTop: 18,
-          padding: 16,
-          border: "1px solid #e5e7eb",
+          border: "1px solid #e5e5e5",
           borderRadius: 12,
+          padding: 20,
+          marginBottom: 24,
         }}
       >
-        <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 10 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16 }}>
           Create Client
         </h2>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 10,
-            maxWidth: 800,
-          }}
-        >
-          <label>
-            <div style={{ fontSize: 12, opacity: 0.8 }}>Name</div>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Acme Dental"
-              style={inputStyle}
-            />
-          </label>
-
-          <label>
-            <div style={{ fontSize: 12, opacity: 0.8 }}>Email</div>
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="owner@acme.com"
-              style={inputStyle}
-            />
-          </label>
-
-          <label>
-            <div style={{ fontSize: 12, opacity: 0.8 }}>API Key</div>
-            <input
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="paste client api key"
-              style={inputStyle}
-            />
-          </label>
-
-          <label>
-            <div style={{ fontSize: 12, opacity: 0.8 }}>
-              Retell Agent ID (optional)
+        <form onSubmit={handleCreateClient}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 16,
+              marginBottom: 16,
+            }}
+          >
+            <div>
+              <label style={{ display: "block", marginBottom: 6 }}>Name</label>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Acme Dental"
+                style={{
+                  width: "100%",
+                  padding: 10,
+                  border: "1px solid #ccc",
+                  borderRadius: 8,
+                }}
+              />
             </div>
-            <input
-              value={retellAgentId}
-              onChange={(e) => setRetellAgentId(e.target.value)}
-              placeholder="agent_..."
-              style={inputStyle}
-            />
-          </label>
-        </div>
 
-        <button
-          onClick={createClient}
-          disabled={!name.trim() || !email.trim() || !apiKey.trim()}
-          style={buttonStyle}
-        >
-          Create Client
-        </button>
+            <div>
+              <label style={{ display: "block", marginBottom: 6 }}>Email</label>
+              <input
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="owner@acme.com"
+                style={{
+                  width: "100%",
+                  padding: 10,
+                  border: "1px solid #ccc",
+                  borderRadius: 8,
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: "block", marginBottom: 6 }}>API Key</label>
+              <input
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="paste client api key"
+                style={{
+                  width: "100%",
+                  padding: 10,
+                  border: "1px solid #ccc",
+                  borderRadius: 8,
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: "block", marginBottom: 6 }}>
+                Retell Agent ID (optional)
+              </label>
+              <input
+                value={retellAgentId}
+                onChange={(e) => setRetellAgentId(e.target.value)}
+                placeholder="agent_..."
+                style={{
+                  width: "100%",
+                  padding: 10,
+                  border: "1px solid #ccc",
+                  borderRadius: 8,
+                }}
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={submitting}
+            style={{
+              border: "1px solid #111",
+              borderRadius: 8,
+              padding: "10px 14px",
+              background: "#111",
+              color: "white",
+              cursor: "pointer",
+            }}
+          >
+            {submitting ? "Creating..." : "Create Client"}
+          </button>
+        </form>
       </section>
 
-      <section style={{ marginTop: 18 }}>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>Clients</h2>
-          <button onClick={loadClients} style={buttonStyleSecondary}>
-            {loading ? "Loading..." : "Refresh"}
+      <section
+        style={{
+          border: "1px solid #e5e5e5",
+          borderRadius: 12,
+          padding: 20,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 16,
+          }}
+        >
+          <h2 style={{ fontSize: 18, fontWeight: 600 }}>Clients</h2>
+
+          <button
+            onClick={loadClients}
+            style={{
+              border: "1px solid #ccc",
+              borderRadius: 8,
+              padding: "8px 12px",
+              background: "white",
+              cursor: "pointer",
+            }}
+          >
+            Refresh
           </button>
         </div>
 
-        <div style={{ marginTop: 10 }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr>
-                <th style={thStyle}>Name</th>
-                <th style={thStyle}>Email</th>
-                <th style={thStyle}>API Key</th>
-                <th style={thStyle}>Retell Agent ID</th>
-              </tr>
-            </thead>
-            <tbody>
-              {clients.length === 0 ? (
-                <tr>
-                  <td style={tdStyle} colSpan={4}>
-                    No clients yet.
-                  </td>
+        {loading ? (
+          <div>Loading clients...</div>
+        ) : clients.length === 0 ? (
+          <div>No clients yet.</div>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ textAlign: "left", background: "#f8f8f8" }}>
+                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Name</th>
+                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Email</th>
+                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>API Key</th>
+                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Retell Agent ID</th>
+                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Action</th>
                 </tr>
-              ) : (
-                clients.map((c) => (
-                  <tr key={c.id}>
-                    <td style={tdStyle}>{c.name}</td>
-                    <td style={tdStyle}>{c.email}</td>
-                    <td style={tdStyle}>
-                      <code>{c.apiKey}</code>
+              </thead>
+              <tbody>
+                {clients.map((client) => (
+                  <tr key={client.id}>
+                    <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>{client.name}</td>
+                    <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>{client.email}</td>
+                    <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>{client.apiKey}</td>
+                    <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
+                      {client.retellAgentId || "—"}
                     </td>
-                    <td style={tdStyle}>
-                      <code>{c.retellAgentId ?? ""}</code>
+                    <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
+                      <Link
+                        href={`/admin/clients/${client.id}/calls`}
+                        style={{
+                          display: "inline-block",
+                          border: "1px solid #111",
+                          borderRadius: 8,
+                          padding: "8px 12px",
+                          background: "#111",
+                          color: "white",
+                          textDecoration: "none",
+                        }}
+                      >
+                        View Calls
+                      </Link>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     </main>
   );
 }
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "10px 12px",
-  border: "1px solid #d1d5db",
-  borderRadius: 8,
-  marginTop: 6,
-};
-
-const buttonStyle: React.CSSProperties = {
-  marginTop: 12,
-  padding: "10px 14px",
-  borderRadius: 10,
-  border: "1px solid #111827",
-  background: "#111827",
-  color: "white",
-  cursor: "pointer",
-};
-
-const buttonStyleSecondary: React.CSSProperties = {
-  padding: "8px 12px",
-  borderRadius: 10,
-  border: "1px solid #d1d5db",
-  background: "white",
-  cursor: "pointer",
-};
-
-const thStyle: React.CSSProperties = {
-  textAlign: "left",
-  borderBottom: "1px solid #e5e7eb",
-  padding: "10px 8px",
-  fontSize: 12,
-  opacity: 0.8,
-};
-
-const tdStyle: React.CSSProperties = {
-  borderBottom: "1px solid #f3f4f6",
-  padding: "10px 8px",
-  verticalAlign: "top",
-};
 
 
