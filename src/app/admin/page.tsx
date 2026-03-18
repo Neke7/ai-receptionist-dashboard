@@ -39,7 +39,9 @@ export default function AdminPage() {
 
       if (!res.ok) {
         throw new Error(
-          typeof data === "object" && data && "error" in (data as Record<string, unknown>)
+          typeof data === "object" &&
+            data &&
+            "error" in (data as Record<string, unknown>)
             ? String((data as Record<string, unknown>).error)
             : `Failed to load clients (${res.status})`
         );
@@ -88,7 +90,9 @@ export default function AdminPage() {
 
       if (!res.ok) {
         throw new Error(
-          typeof data === "object" && data && "error" in (data as Record<string, unknown>)
+          typeof data === "object" &&
+            data &&
+            "error" in (data as Record<string, unknown>)
             ? String((data as Record<string, unknown>).error)
             : `Failed to create client (${res.status})`
         );
@@ -103,6 +107,48 @@ export default function AdminPage() {
       setError(err instanceof Error ? err.message : "Failed to create client");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleRegenerateApiKey(clientId: string) {
+    const confirmed = window.confirm(
+      "Are you sure you want to regenerate this client's API key? The old key will stop working."
+    );
+
+    if (!confirmed) return;
+
+    setError("");
+
+    try {
+      const res = await fetch(`/api/admin/clients/${clientId}/regenerate-key`, {
+        method: "POST",
+      });
+
+      const text = await res.text();
+
+      let data: unknown = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = {};
+      }
+
+      if (!res.ok) {
+        throw new Error(
+          typeof data === "object" &&
+            data &&
+            "error" in (data as Record<string, unknown>)
+            ? String((data as Record<string, unknown>).error)
+            : `Failed to regenerate API key (${res.status})`
+        );
+      }
+
+      await loadClients();
+      window.alert("API key regenerated successfully.");
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to regenerate API key"
+      );
     }
   }
 
@@ -268,24 +314,40 @@ export default function AdminPage() {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ textAlign: "left", background: "#f8f8f8" }}>
-                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Name</th>
-                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Email</th>
-                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>API Key</th>
-                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Retell Agent ID</th>
-                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Action</th>
+                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>
+                    Name
+                  </th>
+                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>
+                    Email
+                  </th>
+                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>
+                    API Key
+                  </th>
+                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>
+                    Retell Agent ID
+                  </th>
+                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>
+                    Action
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {clients.map((client) => (
                   <tr key={client.id}>
-                    <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>{client.name}</td>
-                    <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>{client.email}</td>
-                    <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>{client.apiKey}</td>
+                    <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
+                      {client.name}
+                    </td>
+                    <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
+                      {client.email}
+                    </td>
+                    <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
+                      {client.apiKey}
+                    </td>
                     <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
                       {client.retellAgentId || "—"}
                     </td>
                     <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
-                      <div style={{ display: "flex", gap: 8 }}>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                         <Link
                           href={`/admin/clients/${client.id}/calls`}
                           style={{
@@ -315,6 +377,20 @@ export default function AdminPage() {
                         >
                           Edit
                         </Link>
+
+                        <button
+                          onClick={() => handleRegenerateApiKey(client.id)}
+                          style={{
+                            border: "1px solid #b45309",
+                            borderRadius: 8,
+                            padding: "8px 12px",
+                            background: "#fff7ed",
+                            color: "#9a3412",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Regenerate API Key
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -327,5 +403,4 @@ export default function AdminPage() {
     </main>
   );
 }
-
 
