@@ -285,20 +285,37 @@ export default function AdminPage() {
                       {client.retellAgentId || "—"}
                     </td>
                     <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
-                      <Link
-                        href={`/admin/clients/${client.id}/calls`}
-                        style={{
-                          display: "inline-block",
-                          border: "1px solid #111",
-                          borderRadius: 8,
-                          padding: "8px 12px",
-                          background: "#111",
-                          color: "white",
-                          textDecoration: "none",
-                        }}
-                      >
-                        View Calls
-                      </Link>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <Link
+                          href={`/admin/clients/${client.id}/calls`}
+                          style={{
+                            display: "inline-block",
+                            border: "1px solid #111",
+                            borderRadius: 8,
+                            padding: "8px 12px",
+                            background: "#111",
+                            color: "white",
+                            textDecoration: "none",
+                          }}
+                        >
+                          View Calls
+                        </Link>
+
+                        <Link
+                          href={`/admin/clients/${client.id}/edit`}
+                          style={{
+                            display: "inline-block",
+                            border: "1px solid #ccc",
+                            borderRadius: 8,
+                            padding: "8px 12px",
+                            background: "white",
+                            color: "black",
+                            textDecoration: "none",
+                          }}
+                        >
+                          Edit
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}
