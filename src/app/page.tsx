@@ -1,251 +1,383 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-
-import AppShell from "@/components/layout/AppShell";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-
-// ✅ IMPORTANT: call the Next.js API route (works on localhost + Vercel)
-const API_BASE = "";
-
-type CallOutcome = "booked" | "info_only" | "follow_up";
 
 type CallRecord = {
   id: string;
   createdAt: string;
-
   caller_name: string | null;
   caller_phone: string | null;
+  caller_email: string | null;
   intent: string | null;
-
-  // legacy / fallback fields
+  customer_type: string | null;
+  preferred_date: string | null;
+  preferred_time: string | null;
   appointment_booked: boolean | null;
-  callback_requested?: boolean | null;
-
-  // canonical field
-  call_outcome?: string | null;
+  callback_requested: boolean | null;
+  call_outcome: string | null;
+  call_summary: string | null;
+  call_successful: boolean | null;
 };
 
-function normalizeOutcome(call: CallRecord): CallOutcome {
-  const raw = (call.call_outcome || "").toLowerCase().trim();
+const PAGE_SIZE = 10;
 
-  if (raw === "booked") return "booked";
-  if (raw === "follow_up") return "follow_up";
-  if (raw === "info_only") return "info_only";
-
-  // Fallback for older rows
-  if (call.appointment_booked) return "booked";
-  if (call.callback_requested) return "follow_up";
-  return "info_only";
+function formatStatus(call: CallRecord) {
+  if (call.call_outcome === "booked") return "Booked";
+  if (call.call_outcome === "follow_up") return "Follow Up";
+  if (call.call_outcome === "info_only") return "Info Only";
+  return "Unknown";
 }
 
-function outcomeBadge(outcome: CallOutcome) {
-  if (outcome === "booked") return { label: "Booked", variant: "default" as const };
-  if (outcome === "follow_up") return { label: "Follow Up", variant: "secondary" as const };
-  return { label: "Info Only", variant: "secondary" as const };
+function formatCreatedAt(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
 }
 
 export default function DashboardPage() {
   const router = useRouter();
 
   const [calls, setCalls] = useState<CallRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
   const [search, setSearch] = useState("");
-  const [refreshing, setRefreshing] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [page, setPage] = useState(1);
 
   async function loadCalls() {
-    setRefreshing(true);
+    setLoading(true);
+    setError("");
+
     try {
-      const res = await fetch(`${API_BASE}/api/calls`, { cache: "no-store" });
+      const res = await fetch("/api/calls", { cache: "no-store" });
+
       if (res.status === 401) {
         router.push("/login");
         return;
       }
 
-      
+      const text = await res.text();
 
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(`API /api/calls failed (${res.status}) ${text}`);
+      let data: unknown = [];
+      try {
+        data = text ? JSON.parse(text) : [];
+      } catch {
+        data = [];
       }
 
-      const data = await res.json();
-      setCalls(Array.isArray(data) ? data : []);
-      setLastUpdated(new Date());
-    } catch (e) {
-      console.error(e);
-      alert(
-        "Failed to load calls from /api/calls.\n\nIf you're running locally, make sure your Next.js dev server is running (npm run dev)."
-      );
+      if (!res.ok) {
+        throw new Error(
+          typeof data === "object" && data && "error" in (data as Record<string, unknown>)
+            ? String((data as Record<string, unknown>).error)
+            : `API /api/calls failed (${res.status})`
+        );
+      }
+
+      setCalls(Array.isArray(data) ? (data as CallRecord[]) : []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load calls");
+      setCalls([]);
     } finally {
-      setRefreshing(false);
+      setLoading(false);
     }
   }
 
   useEffect(() => {
     loadCalls();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const filtered = useMemo(() => {
-    const s = search.toLowerCase();
-    return calls.filter(
-      (c) =>
-        (c.caller_name || "").toLowerCase().includes(s) ||
-        (c.caller_phone || "").includes(search) ||
-        (c.intent || "").toLowerCase().includes(s)
-    );
-  }, [calls, search]);
+  const filteredCalls = useMemo(() => {
+    const q = search.trim().toLowerCase();
 
-  const stats = useMemo(() => {
-    let booked = 0;
-    let follow = 0;
-    let info = 0;
+    return calls.filter((call) => {
+      const matchesSearch =
+        !q ||
+        (call.caller_name || "").toLowerCase().includes(q) ||
+        (call.caller_phone || "").toLowerCase().includes(q) ||
+        (call.intent || "").toLowerCase().includes(q) ||
+        (call.call_summary || "").toLowerCase().includes(q);
 
-    for (const c of calls) {
-      const o = normalizeOutcome(c);
-      if (o === "booked") booked++;
-      else if (o === "follow_up") follow++;
-      else info++;
+      const matchesStatus =
+        statusFilter === "all" || (call.call_outcome || "unknown") === statusFilter;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [calls, search, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredCalls.length / PAGE_SIZE));
+
+  const paginatedCalls = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredCalls.slice(start, start + PAGE_SIZE);
+  }, [filteredCalls, page]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter]);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
     }
+  }, [page, totalPages]);
 
-    return { total: calls.length, booked, follow, info };
+  const totals = useMemo(() => {
+    return {
+      total: calls.length,
+      booked: calls.filter((c) => c.call_outcome === "booked").length,
+      followUp: calls.filter((c) => c.call_outcome === "follow_up").length,
+      infoOnly: calls.filter((c) => c.call_outcome === "info_only").length,
+    };
   }, [calls]);
 
-  const recent = useMemo(() => {
-    return [...filtered]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 8);
-  }, [filtered]);
-
   return (
-    <AppShell title="Dashboard">
-      <div className="space-y-6">
-        {/* Top bar */}
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-3">
-            <Input
-              placeholder="Search by name, phone, or intent..."
-              className="w-full md:w-[360px]"
+    <main style={{ padding: 24 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 16,
+          marginBottom: 24,
+        }}
+      >
+        <div>
+          <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 8 }}>
+            Dashboard
+          </h1>
+          <p style={{ color: "#666" }}>
+            View and manage your receptionist call activity.
+          </p>
+        </div>
+
+        <button
+          onClick={loadCalls}
+          style={{
+            border: "1px solid #ccc",
+            borderRadius: 8,
+            padding: "8px 12px",
+            background: "white",
+            cursor: "pointer",
+          }}
+        >
+          Refresh
+        </button>
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+          gap: 16,
+          marginBottom: 24,
+        }}
+      >
+        <div style={{ border: "1px solid #e5e5e5", borderRadius: 12, padding: 16 }}>
+          <div style={{ color: "#666", marginBottom: 6 }}>Total</div>
+          <div style={{ fontSize: 28, fontWeight: 700 }}>{totals.total}</div>
+        </div>
+        <div style={{ border: "1px solid #e5e5e5", borderRadius: 12, padding: 16 }}>
+          <div style={{ color: "#666", marginBottom: 6 }}>Booked</div>
+          <div style={{ fontSize: 28, fontWeight: 700 }}>{totals.booked}</div>
+        </div>
+        <div style={{ border: "1px solid #e5e5e5", borderRadius: 12, padding: 16 }}>
+          <div style={{ color: "#666", marginBottom: 6 }}>Follow Up</div>
+          <div style={{ fontSize: 28, fontWeight: 700 }}>{totals.followUp}</div>
+        </div>
+        <div style={{ border: "1px solid #e5e5e5", borderRadius: 12, padding: 16 }}>
+          <div style={{ color: "#666", marginBottom: 6 }}>Info Only</div>
+          <div style={{ fontSize: 28, fontWeight: 700 }}>{totals.infoOnly}</div>
+        </div>
+      </div>
+
+      <section
+        style={{
+          border: "1px solid #e5e5e5",
+          borderRadius: 12,
+          padding: 20,
+          marginBottom: 24,
+        }}
+      >
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "2fr 1fr",
+            gap: 16,
+          }}
+        >
+          <div>
+            <label style={{ display: "block", marginBottom: 6 }}>Search</label>
+            <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by caller, phone, intent, or summary"
+              style={{
+                width: "100%",
+                padding: 10,
+                border: "1px solid #ccc",
+                borderRadius: 8,
+              }}
             />
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="text-sm text-muted-foreground">
-              {lastUpdated ? `Last updated: ${lastUpdated.toLocaleString()}` : "Last updated: —"}
-            </div>
-
-            <Button onClick={loadCalls} disabled={refreshing}>
-              {refreshing ? "Refreshing..." : "Refresh"}
-            </Button>
+          <div>
+            <label style={{ display: "block", marginBottom: 6 }}>Status Filter</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{
+                width: "100%",
+                padding: 10,
+                border: "1px solid #ccc",
+                borderRadius: 8,
+                background: "white",
+              }}
+            >
+              <option value="all">All</option>
+              <option value="booked">Booked</option>
+              <option value="follow_up">Follow Up</option>
+              <option value="info_only">Info Only</option>
+              <option value="unknown">Unknown</option>
+            </select>
           </div>
         </div>
+      </section>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Total</CardTitle>
-            </CardHeader>
-            <CardContent className="text-3xl font-bold">{stats.total}</CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Booked</CardTitle>
-            </CardHeader>
-            <CardContent className="text-3xl font-bold">{stats.booked}</CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Info Only</CardTitle>
-            </CardHeader>
-            <CardContent className="text-3xl font-bold">{stats.info}</CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Follow Up</CardTitle>
-            </CardHeader>
-            <CardContent className="text-3xl font-bold">{stats.follow}</CardContent>
-          </Card>
+      {loading ? (
+        <div>Loading calls...</div>
+      ) : error ? (
+        <div
+          style={{
+            color: "crimson",
+            border: "1px solid #f2c2c2",
+            borderRadius: 8,
+            padding: 12,
+          }}
+        >
+          Error: {error}
         </div>
+      ) : paginatedCalls.length === 0 ? (
+        <div
+          style={{
+            border: "1px solid #e5e5e5",
+            borderRadius: 12,
+            padding: 16,
+          }}
+        >
+          No calls found for the current search/filter.
+        </div>
+      ) : (
+        <>
+          <div
+            style={{
+              border: "1px solid #e5e5e5",
+              borderRadius: 12,
+              overflow: "hidden",
+              marginBottom: 16,
+            }}
+          >
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ background: "#f8f8f8", textAlign: "left" }}>
+                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Caller</th>
+                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Phone</th>
+                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Status</th>
+                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Intent</th>
+                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Created</th>
+                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedCalls.map((call) => (
+                  <tr key={call.id}>
+                    <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
+                      {call.caller_name || "Unknown"}
+                    </td>
+                    <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
+                      {call.caller_phone || "—"}
+                    </td>
+                    <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
+                      {formatStatus(call)}
+                    </td>
+                    <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
+                      {call.intent || "unknown"}
+                    </td>
+                    <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
+                      {formatCreatedAt(call.createdAt)}
+                    </td>
+                    <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
+                      <Link
+                        href={`/calls/${call.id}`}
+                        style={{
+                          display: "inline-block",
+                          border: "1px solid #111",
+                          borderRadius: 8,
+                          padding: "8px 12px",
+                          background: "#111",
+                          color: "white",
+                          textDecoration: "none",
+                        }}
+                      >
+                        View
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-        {/* Recent Calls */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Recent Calls</CardTitle>
-            <Button variant="outline" onClick={() => router.push("/calls")}>
-              View all
-            </Button>
-          </CardHeader>
-
-          <CardContent className="space-y-3">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Caller</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Intent</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-
-              <TableBody>
-                {recent.map((call) => {
-                  const outcome = normalizeOutcome(call);
-                  const badge = outcomeBadge(outcome);
-
-                  return (
-                    <TableRow key={call.id}>
-                      <TableCell>
-                        <div className="font-medium">{call.caller_name || "Unknown Caller"}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {call.caller_phone || "—"}
-                        </div>
-                      </TableCell>
-
-                      <TableCell>
-                        <Badge variant={badge.variant}>{badge.label}</Badge>
-                      </TableCell>
-
-                      <TableCell>{call.intent || "—"}</TableCell>
-
-                      <TableCell>{new Date(call.createdAt).toLocaleString()}</TableCell>
-
-                      <TableCell className="text-right">
-                        <Button size="sm" onClick={() => router.push(`/calls/${call.id}`)}>
-                          View
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-
-            <div className="text-sm text-muted-foreground">
-              Showing {recent.length} of {filtered.length} matching calls.
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 12,
+            }}
+          >
+            <div style={{ color: "#666" }}>
+              Page {page} of {totalPages}
             </div>
-          </CardContent>
-        </Card>
-      </div>
-    </AppShell>
+
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                style={{
+                  border: "1px solid #ccc",
+                  borderRadius: 8,
+                  padding: "8px 12px",
+                  background: page === 1 ? "#f5f5f5" : "white",
+                  color: page === 1 ? "#999" : "black",
+                  cursor: page === 1 ? "not-allowed" : "pointer",
+                }}
+              >
+                Previous
+              </button>
+
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                style={{
+                  border: "1px solid #ccc",
+                  borderRadius: 8,
+                  padding: "8px 12px",
+                  background: page === totalPages ? "#f5f5f5" : "white",
+                  color: page === totalPages ? "#999" : "black",
+                  cursor: page === totalPages ? "not-allowed" : "pointer",
+                }}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </main>
   );
 }
+
+
