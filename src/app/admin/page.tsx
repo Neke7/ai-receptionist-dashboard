@@ -152,6 +152,46 @@ export default function AdminPage() {
     }
   }
 
+  async function handleDeleteClient(clientId: string, clientName: string) {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${clientName}"?\n\nThe client will be removed, but their calls will be kept.`
+    );
+
+    if (!confirmed) return;
+
+    setError("");
+
+    try {
+      const res = await fetch(`/api/admin/clients/${clientId}/delete`, {
+        method: "DELETE",
+      });
+
+      const text = await res.text();
+
+      let data: unknown = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = {};
+      }
+
+      if (!res.ok) {
+        throw new Error(
+          typeof data === "object" &&
+            data &&
+            "error" in (data as Record<string, unknown>)
+            ? String((data as Record<string, unknown>).error)
+            : `Failed to delete client (${res.status})`
+        );
+      }
+
+      await loadClients();
+      window.alert("Client deleted successfully.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete client");
+    }
+  }
+
   return (
     <main style={{ padding: 24 }}>
       <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 8 }}>Admin</h1>
@@ -391,6 +431,22 @@ export default function AdminPage() {
                         >
                           Regenerate API Key
                         </button>
+
+                        <button
+                          onClick={() =>
+                            handleDeleteClient(client.id, client.name)
+                          }
+                          style={{
+                            border: "1px solid #b91c1c",
+                            borderRadius: 8,
+                            padding: "8px 12px",
+                            background: "#fef2f2",
+                            color: "#991b1b",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Delete
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -403,4 +459,3 @@ export default function AdminPage() {
     </main>
   );
 }
-
