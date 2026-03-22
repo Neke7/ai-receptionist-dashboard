@@ -1,3 +1,5 @@
+"use client";
+
 import { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -41,8 +43,7 @@ export default function AppShell({ title, children }: AppShellProps) {
   return (
     <div className="min-h-screen bg-background">
       <div className="flex min-h-screen">
-        {/* Sidebar */}
-        <aside className="w-64 border-r bg-background">
+        <aside className="w-64 border-r bg-background flex flex-col">
           <div className="px-5 py-6">
             <div className="text-xs uppercase tracking-wider text-muted-foreground">
               Console
@@ -64,7 +65,6 @@ export default function AppShell({ title, children }: AppShellProps) {
           </div>
         </aside>
 
-        {/* Main */}
         <main className="flex-1">
           <div className="mx-auto w-full max-w-6xl px-6 py-6">
             {title ? (
