@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 type CallRecord = {
   id: string;
@@ -34,6 +34,60 @@ function formatCreatedAt(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString();
+}
+
+function Sidebar() {
+  const pathname = usePathname();
+
+  function navStyle(href: string): React.CSSProperties {
+    const active = pathname === href;
+    return {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: "10px 12px",
+      borderRadius: 8,
+      textDecoration: "none",
+      color: active ? "black" : "#666",
+      background: active ? "#f3f4f6" : "transparent",
+      fontWeight: active ? 600 : 400,
+      marginBottom: 6,
+    };
+  }
+
+  return (
+    <aside
+      style={{
+        width: 240,
+        borderRight: "1px solid #e5e5e5",
+        padding: 20,
+        boxSizing: "border-box",
+      }}
+    >
+      <div style={{ fontSize: 12, textTransform: "uppercase", color: "#777" }}>
+        Console
+      </div>
+      <div style={{ fontSize: 22, fontWeight: 700, marginTop: 6, marginBottom: 24 }}>
+        AI Receptionist
+      </div>
+
+      <nav style={{ marginBottom: 24 }}>
+        <Link href="/" style={navStyle("/")}>
+          <span>Dashboard</span>
+          {pathname === "/" ? <span>•</span> : null}
+        </Link>
+
+        <Link href="/calls" style={navStyle("/calls")}>
+          <span>Calls</span>
+          {pathname === "/calls" ? <span>•</span> : null}
+        </Link>
+      </nav>
+
+      <div style={{ fontSize: 12, color: "#777", marginTop: 24 }}>
+        Internal portal
+      </div>
+    </aside>
+  );
 }
 
 export default function DashboardPage() {
@@ -70,7 +124,9 @@ export default function DashboardPage() {
 
       if (!res.ok) {
         throw new Error(
-          typeof data === "object" && data && "error" in (data as Record<string, unknown>)
+          typeof data === "object" &&
+            data &&
+            "error" in (data as Record<string, unknown>)
             ? String((data as Record<string, unknown>).error)
             : `API /api/calls failed (${res.status})`
         );
@@ -101,7 +157,8 @@ export default function DashboardPage() {
         (call.call_summary || "").toLowerCase().includes(q);
 
       const matchesStatus =
-        statusFilter === "all" || (call.call_outcome || "unknown") === statusFilter;
+        statusFilter === "all" ||
+        (call.call_outcome || "unknown") === statusFilter;
 
       return matchesSearch && matchesStatus;
     });
@@ -134,250 +191,256 @@ export default function DashboardPage() {
   }, [calls]);
 
   return (
-    <main style={{ padding: 24 }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: 16,
-          marginBottom: 24,
-        }}
-      >
-        <div>
-          <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 8 }}>
-            Dashboard
-          </h1>
-          <p style={{ color: "#666" }}>
-            View and manage your receptionist call activity.
-          </p>
-        </div>
+    <div style={{ display: "flex", minHeight: "100vh" }}>
+      <Sidebar />
 
-        <button
-          onClick={loadCalls}
+      <main style={{ flex: 1, padding: 24 }}>
+        <div
           style={{
-            border: "1px solid #ccc",
-            borderRadius: 8,
-            padding: "8px 12px",
-            background: "white",
-            cursor: "pointer",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: 16,
+            marginBottom: 24,
           }}
         >
-          Refresh
-        </button>
-      </div>
+          <div>
+            <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 8 }}>
+              Dashboard
+            </h1>
+            <p style={{ color: "#666" }}>
+              View and manage your receptionist call activity.
+            </p>
+          </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-          gap: 16,
-          marginBottom: 24,
-        }}
-      >
-        <div style={{ border: "1px solid #e5e5e5", borderRadius: 12, padding: 16 }}>
-          <div style={{ color: "#666", marginBottom: 6 }}>Total</div>
-          <div style={{ fontSize: 28, fontWeight: 700 }}>{totals.total}</div>
+          <button
+            onClick={loadCalls}
+            style={{
+              border: "1px solid #ccc",
+              borderRadius: 8,
+              padding: "8px 12px",
+              background: "white",
+              cursor: "pointer",
+            }}
+          >
+            Refresh
+          </button>
         </div>
-        <div style={{ border: "1px solid #e5e5e5", borderRadius: 12, padding: 16 }}>
-          <div style={{ color: "#666", marginBottom: 6 }}>Booked</div>
-          <div style={{ fontSize: 28, fontWeight: 700 }}>{totals.booked}</div>
-        </div>
-        <div style={{ border: "1px solid #e5e5e5", borderRadius: 12, padding: 16 }}>
-          <div style={{ color: "#666", marginBottom: 6 }}>Follow Up</div>
-          <div style={{ fontSize: 28, fontWeight: 700 }}>{totals.followUp}</div>
-        </div>
-        <div style={{ border: "1px solid #e5e5e5", borderRadius: 12, padding: 16 }}>
-          <div style={{ color: "#666", marginBottom: 6 }}>Info Only</div>
-          <div style={{ fontSize: 28, fontWeight: 700 }}>{totals.infoOnly}</div>
-        </div>
-      </div>
 
-      <section
-        style={{
-          border: "1px solid #e5e5e5",
-          borderRadius: 12,
-          padding: 20,
-          marginBottom: 24,
-        }}
-      >
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "2fr 1fr",
+            gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
             gap: 16,
+            marginBottom: 24,
           }}
         >
-          <div>
-            <label style={{ display: "block", marginBottom: 6 }}>Search</label>
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by caller, phone, intent, or summary"
-              style={{
-                width: "100%",
-                padding: 10,
-                border: "1px solid #ccc",
-                borderRadius: 8,
-              }}
-            />
+          <div style={{ border: "1px solid #e5e5e5", borderRadius: 12, padding: 16 }}>
+            <div style={{ color: "#666", marginBottom: 6 }}>Total</div>
+            <div style={{ fontSize: 28, fontWeight: 700 }}>{totals.total}</div>
           </div>
-
-          <div>
-            <label style={{ display: "block", marginBottom: 6 }}>Status Filter</label>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              style={{
-                width: "100%",
-                padding: 10,
-                border: "1px solid #ccc",
-                borderRadius: 8,
-                background: "white",
-              }}
-            >
-              <option value="all">All</option>
-              <option value="booked">Booked</option>
-              <option value="follow_up">Follow Up</option>
-              <option value="info_only">Info Only</option>
-              <option value="unknown">Unknown</option>
-            </select>
+          <div style={{ border: "1px solid #e5e5e5", borderRadius: 12, padding: 16 }}>
+            <div style={{ color: "#666", marginBottom: 6 }}>Booked</div>
+            <div style={{ fontSize: 28, fontWeight: 700 }}>{totals.booked}</div>
+          </div>
+          <div style={{ border: "1px solid #e5e5e5", borderRadius: 12, padding: 16 }}>
+            <div style={{ color: "#666", marginBottom: 6 }}>Follow Up</div>
+            <div style={{ fontSize: 28, fontWeight: 700 }}>{totals.followUp}</div>
+          </div>
+          <div style={{ border: "1px solid #e5e5e5", borderRadius: 12, padding: 16 }}>
+            <div style={{ color: "#666", marginBottom: 6 }}>Info Only</div>
+            <div style={{ fontSize: 28, fontWeight: 700 }}>{totals.infoOnly}</div>
           </div>
         </div>
-      </section>
 
-      {loading ? (
-        <div>Loading calls...</div>
-      ) : error ? (
-        <div
-          style={{
-            color: "crimson",
-            border: "1px solid #f2c2c2",
-            borderRadius: 8,
-            padding: 12,
-          }}
-        >
-          Error: {error}
-        </div>
-      ) : paginatedCalls.length === 0 ? (
-        <div
+        <section
           style={{
             border: "1px solid #e5e5e5",
             borderRadius: 12,
-            padding: 16,
+            padding: 20,
+            marginBottom: 24,
           }}
         >
-          No calls found for the current search/filter.
-        </div>
-      ) : (
-        <>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "2fr 1fr",
+              gap: 16,
+            }}
+          >
+            <div>
+              <label style={{ display: "block", marginBottom: 6 }}>Search</label>
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by caller, phone, intent, or summary"
+                style={{
+                  width: "100%",
+                  padding: 10,
+                  border: "1px solid #ccc",
+                  borderRadius: 8,
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: "block", marginBottom: 6 }}>Status Filter</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: 10,
+                  border: "1px solid #ccc",
+                  borderRadius: 8,
+                  background: "white",
+                }}
+              >
+                <option value="all">All</option>
+                <option value="booked">Booked</option>
+                <option value="follow_up">Follow Up</option>
+                <option value="info_only">Info Only</option>
+                <option value="unknown">Unknown</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        {loading ? (
+          <div>Loading calls...</div>
+        ) : error ? (
+          <div
+            style={{
+              color: "crimson",
+              border: "1px solid #f2c2c2",
+              borderRadius: 8,
+              padding: 12,
+            }}
+          >
+            Error: {error}
+          </div>
+        ) : paginatedCalls.length === 0 ? (
           <div
             style={{
               border: "1px solid #e5e5e5",
               borderRadius: 12,
-              overflow: "hidden",
-              marginBottom: 16,
+              padding: 16,
             }}
           >
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ background: "#f8f8f8", textAlign: "left" }}>
-                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Caller</th>
-                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Phone</th>
-                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Status</th>
-                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Intent</th>
-                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Created</th>
-                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedCalls.map((call) => (
-                  <tr key={call.id}>
-                    <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
-                      {call.caller_name || "Unknown"}
-                    </td>
-                    <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
-                      {call.caller_phone || "—"}
-                    </td>
-                    <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
-                      {formatStatus(call)}
-                    </td>
-                    <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
-                      {call.intent || "unknown"}
-                    </td>
-                    <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
-                      {formatCreatedAt(call.createdAt)}
-                    </td>
-                    <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
-                      <Link
-                        href={`/calls/${call.id}`}
-                        style={{
-                          display: "inline-block",
-                          border: "1px solid #111",
-                          borderRadius: 8,
-                          padding: "8px 12px",
-                          background: "#111",
-                          color: "white",
-                          textDecoration: "none",
-                        }}
-                      >
-                        View
-                      </Link>
-                    </td>
+            No calls found for the current search/filter.
+          </div>
+        ) : (
+          <>
+            <div
+              style={{
+                border: "1px solid #e5e5e5",
+                borderRadius: 12,
+                overflow: "hidden",
+                marginBottom: 16,
+              }}
+            >
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "#f8f8f8", textAlign: "left" }}>
+                    <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Caller</th>
+                    <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Phone</th>
+                    <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Status</th>
+                    <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Intent</th>
+                    <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Created</th>
+                    <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 12,
-            }}
-          >
-            <div style={{ color: "#666" }}>
-              Page {page} of {totalPages}
+                </thead>
+                <tbody>
+                  {paginatedCalls.map((call) => (
+                    <tr key={call.id}>
+                      <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
+                        {call.caller_name || "Unknown"}
+                      </td>
+                      <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
+                        {call.caller_phone || "—"}
+                      </td>
+                      <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
+                        {formatStatus(call)}
+                      </td>
+                      <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
+                        {call.intent || "unknown"}
+                      </td>
+                      <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
+                        {formatCreatedAt(call.createdAt)}
+                      </td>
+                      <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
+                        <Link
+                          href={`/calls/${call.id}`}
+                          style={{
+                            display: "inline-block",
+                            border: "1px solid #111",
+                            borderRadius: 8,
+                            padding: "8px 12px",
+                            background: "#111",
+                            color: "white",
+                            textDecoration: "none",
+                          }}
+                        >
+                          View
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
 
-            <div style={{ display: "flex", gap: 8 }}>
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                style={{
-                  border: "1px solid #ccc",
-                  borderRadius: 8,
-                  padding: "8px 12px",
-                  background: page === 1 ? "#f5f5f5" : "white",
-                  color: page === 1 ? "#999" : "black",
-                  cursor: page === 1 ? "not-allowed" : "pointer",
-                }}
-              >
-                Previous
-              </button>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 12,
+              }}
+            >
+              <div style={{ color: "#666" }}>
+                Page {page} of {totalPages}
+              </div>
 
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                style={{
-                  border: "1px solid #ccc",
-                  borderRadius: 8,
-                  padding: "8px 12px",
-                  background: page === totalPages ? "#f5f5f5" : "white",
-                  color: page === totalPages ? "#999" : "black",
-                  cursor: page === totalPages ? "not-allowed" : "pointer",
-                }}
-              >
-                Next
-              </button>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  style={{
+                    border: "1px solid #ccc",
+                    borderRadius: 8,
+                    padding: "8px 12px",
+                    background: page === 1 ? "#f5f5f5" : "white",
+                    color: page === 1 ? "#999" : "black",
+                    cursor: page === 1 ? "not-allowed" : "pointer",
+                  }}
+                >
+                  Previous
+                </button>
+
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  style={{
+                    border: "1px solid #ccc",
+                    borderRadius: 8,
+                    padding: "8px 12px",
+                    background: page === totalPages ? "#f5f5f5" : "white",
+                    color: page === totalPages ? "#999" : "black",
+                    cursor: page === totalPages ? "not-allowed" : "pointer",
+                  }}
+                >
+                  Next
+                </button>
+              </div>
             </div>
-          </div>
-        </>
-      )}
-    </main>
+          </>
+        )}
+      </main>
+    </div>
   );
 }
+
+
 
 
