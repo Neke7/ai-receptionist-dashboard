@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import AppShell from "@/components/layout/AppShell";
+import { usePathname, useRouter } from "next/navigation";
 
 type CallRecord = {
   id: string;
@@ -35,6 +34,60 @@ function formatCreatedAt(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString();
+}
+
+function Sidebar() {
+  const pathname = usePathname();
+
+  function navStyle(href: string): React.CSSProperties {
+    const active = pathname === href;
+    return {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: "10px 12px",
+      borderRadius: 8,
+      textDecoration: "none",
+      color: active ? "black" : "#666",
+      background: active ? "#f3f4f6" : "transparent",
+      fontWeight: active ? 600 : 400,
+      marginBottom: 6,
+    };
+  }
+
+  return (
+    <aside
+      style={{
+        width: 240,
+        borderRight: "1px solid #e5e5e5",
+        padding: 20,
+        boxSizing: "border-box",
+      }}
+    >
+      <div style={{ fontSize: 12, textTransform: "uppercase", color: "#777" }}>
+        Console
+      </div>
+      <div style={{ fontSize: 22, fontWeight: 700, marginTop: 6, marginBottom: 24 }}>
+        AI Receptionist
+      </div>
+
+      <nav style={{ marginBottom: 24 }}>
+        <Link href="/" style={navStyle("/")}>
+          <span>Dashboard</span>
+          {pathname === "/" ? <span>•</span> : null}
+        </Link>
+
+        <Link href="/calls" style={navStyle("/calls")}>
+          <span>Calls</span>
+          {pathname === "/calls" ? <span>•</span> : null}
+        </Link>
+      </nav>
+
+      <div style={{ fontSize: 12, color: "#777", marginTop: 24 }}>
+        Internal portal
+      </div>
+    </aside>
+  );
 }
 
 export default function CallsPage() {
@@ -129,8 +182,10 @@ export default function CallsPage() {
   }, [page, totalPages]);
 
   return (
-    <AppShell>
-      <main style={{ padding: 24 }}>
+    <div style={{ display: "flex", minHeight: "100vh" }}>
+      <Sidebar />
+
+      <main style={{ flex: 1, padding: 24 }}>
         <div
           style={{
             display: "flex",
@@ -211,9 +266,7 @@ export default function CallsPage() {
             </div>
 
             <div>
-              <label style={{ display: "block", marginBottom: 6 }}>
-                Status Filter
-              </label>
+              <label style={{ display: "block", marginBottom: 6 }}>Status Filter</label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
@@ -271,69 +324,33 @@ export default function CallsPage() {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#f8f8f8", textAlign: "left" }}>
-                    <th
-                      style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}
-                    >
-                      Caller
-                    </th>
-                    <th
-                      style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}
-                    >
-                      Phone
-                    </th>
-                    <th
-                      style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}
-                    >
-                      Status
-                    </th>
-                    <th
-                      style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}
-                    >
-                      Intent
-                    </th>
-                    <th
-                      style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}
-                    >
-                      Created
-                    </th>
-                    <th
-                      style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}
-                    >
-                      Action
-                    </th>
+                    <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Caller</th>
+                    <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Phone</th>
+                    <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Status</th>
+                    <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Intent</th>
+                    <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Created</th>
+                    <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {paginatedCalls.map((call) => (
                     <tr key={call.id}>
-                      <td
-                        style={{ padding: 12, borderBottom: "1px solid #eee" }}
-                      >
+                      <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
                         {call.caller_name || "Unknown"}
                       </td>
-                      <td
-                        style={{ padding: 12, borderBottom: "1px solid #eee" }}
-                      >
+                      <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
                         {call.caller_phone || "—"}
                       </td>
-                      <td
-                        style={{ padding: 12, borderBottom: "1px solid #eee" }}
-                      >
+                      <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
                         {formatStatus(call)}
                       </td>
-                      <td
-                        style={{ padding: 12, borderBottom: "1px solid #eee" }}
-                      >
+                      <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
                         {call.intent || "unknown"}
                       </td>
-                      <td
-                        style={{ padding: 12, borderBottom: "1px solid #eee" }}
-                      >
+                      <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
                         {formatCreatedAt(call.createdAt)}
                       </td>
-                      <td
-                        style={{ padding: 12, borderBottom: "1px solid #eee" }}
-                      >
+                      <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
                         <Link
                           href={`/calls/${call.id}`}
                           style={{
@@ -402,9 +419,10 @@ export default function CallsPage() {
           </>
         )}
       </main>
-    </AppShell>
+    </div>
   );
 }
+
 
 
 

@@ -37,6 +37,10 @@ type CallRecord = {
   call_outcome: string | null;
   call_summary: string | null;
   call_successful: boolean | null;
+
+  start_timestamp: string | null;
+  end_timestamp: string | null;
+  duration_ms: number | null;
 };
 
 function normalizeOutcome(
@@ -53,6 +57,27 @@ function normalizeOutcome(
   if (appointment_booked === false) return "info_only";
 
   return "unknown";
+}
+
+function formatDateTime(value: string | null | undefined) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
+}
+
+function formatDuration(durationMs: number | null | undefined) {
+  if (typeof durationMs !== "number" || Number.isNaN(durationMs)) return "—";
+
+  const totalSeconds = Math.round(durationMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+
+  return `${seconds}s`;
 }
 
 export default function CallDetailsPage() {
@@ -86,9 +111,15 @@ export default function CallDetailsPage() {
       call?.appointment_booked ?? form.appointment_booked
     );
 
-    if (outcome === "booked") return { label: "Booked", variant: "default" as const };
-    if (outcome === "info_only") return { label: "Info Only", variant: "secondary" as const };
-    if (outcome === "follow_up") return { label: "Follow up", variant: "secondary" as const };
+    if (outcome === "booked") {
+      return { label: "Booked", variant: "default" as const };
+    }
+    if (outcome === "info_only") {
+      return { label: "Info Only", variant: "secondary" as const };
+    }
+    if (outcome === "follow_up") {
+      return { label: "Follow up", variant: "secondary" as const };
+    }
     return { label: "Unknown", variant: "secondary" as const };
   }, [call, form.call_outcome, form.appointment_booked]);
 
@@ -101,8 +132,6 @@ export default function CallDetailsPage() {
         return;
       }
 
-      
-
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         throw new Error(`API /api/calls/${id} failed (${res.status}) ${text}`);
@@ -111,7 +140,10 @@ export default function CallDetailsPage() {
       const data: CallRecord = await res.json();
       setCall(data);
 
-      const derivedOutcome = normalizeOutcome(data.call_outcome, data.appointment_booked);
+      const derivedOutcome = normalizeOutcome(
+        data.call_outcome,
+        data.appointment_booked
+      );
 
       setForm({
         caller_name: data.caller_name ?? "",
@@ -180,7 +212,6 @@ export default function CallDetailsPage() {
         }),
       });
 
-      // ✅ Force auth prompt if middleware returns 401
       if (res.status === 401) {
         window.location.reload();
         return;
@@ -222,7 +253,6 @@ export default function CallDetailsPage() {
   return (
     <AppShell title="Call Details">
       <div className="space-y-4">
-        {/* Top row */}
         <div className="flex items-center justify-between gap-3">
           <div className="text-sm text-muted-foreground">
             ID: <span className="font-mono">{call.id}</span>
@@ -239,7 +269,28 @@ export default function CallDetailsPage() {
           </div>
         </div>
 
-        {/* Caller */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Call Timing</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label className="text-sm">Started</label>
+              <Input value={formatDateTime(call.start_timestamp)} readOnly />
+            </div>
+
+            <div>
+              <label className="text-sm">Ended</label>
+              <Input value={formatDateTime(call.end_timestamp)} readOnly />
+            </div>
+
+            <div>
+              <label className="text-sm">Duration</label>
+              <Input value={formatDuration(call.duration_ms)} readOnly />
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>Caller</CardTitle>
@@ -272,7 +323,6 @@ export default function CallDetailsPage() {
           </CardContent>
         </Card>
 
-        {/* Booking / Intent */}
         <Card>
           <CardHeader>
             <CardTitle>Booking / Intent</CardTitle>
@@ -345,7 +395,6 @@ export default function CallDetailsPage() {
 
           <Separator />
 
-          {/* Outcome / Notes / Summary */}
           <CardContent className="grid grid-cols-1 gap-3">
             <div className="flex flex-col gap-2">
               <label className="text-sm">Call outcome</label>
@@ -416,4 +465,5 @@ export default function CallDetailsPage() {
     </AppShell>
   );
 }
+
 
