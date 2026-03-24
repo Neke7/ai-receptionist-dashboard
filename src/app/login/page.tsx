@@ -11,24 +11,33 @@ export default function LoginPage() {
   const router = useRouter();
   const [apiKey, setApiKey] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   async function onLogin() {
     setLoading(true);
+    setError("");
+
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ apiKey }),
+        body: JSON.stringify({ apiKey: apiKey.trim() }),
       });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        alert(data?.error || "Login failed");
+        setError(
+          typeof data?.error === "string" && data.error.trim()
+            ? data.error
+            : "Login failed. Please check your API key and try again."
+        );
         return;
       }
 
       router.push("/");
       router.refresh();
+    } catch {
+      setError("Unable to reach login service. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -40,6 +49,7 @@ export default function LoginPage() {
         <CardHeader>
           <CardTitle>Client Login</CardTitle>
         </CardHeader>
+
         <CardContent className="space-y-3">
           <div className="text-sm text-muted-foreground">
             Enter your API key to access your dashboard.
@@ -48,8 +58,22 @@ export default function LoginPage() {
           <Input
             placeholder="API Key"
             value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
+            onChange={(e) => {
+              setApiKey(e.target.value);
+              if (error) setError("");
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !loading && apiKey.trim()) {
+                onLogin();
+              }
+            }}
           />
+
+          {error ? (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {error}
+            </div>
+          ) : null}
 
           <Button onClick={onLogin} disabled={loading || !apiKey.trim()}>
             {loading ? "Logging in..." : "Login"}
