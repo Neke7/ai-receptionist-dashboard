@@ -61,9 +61,24 @@ function normalizeOutcome(
 
 function formatDateTime(value: string | null | undefined) {
   if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
+
+  const trimmed = String(value).trim();
+
+  // Handle raw unix timestamps like "1774317868871"
+  if (/^\d+$/.test(trimmed)) {
+    const asNumber = Number(trimmed);
+    const date = new Date(asNumber);
+    if (!Number.isNaN(date.getTime())) {
+      return date.toLocaleString();
+    }
+  }
+
+  const date = new Date(trimmed);
+  if (!Number.isNaN(date.getTime())) {
+    return date.toLocaleString();
+  }
+
+  return trimmed;
 }
 
 function formatDuration(durationMs: number | null | undefined) {
