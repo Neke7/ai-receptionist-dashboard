@@ -392,8 +392,6 @@ export default function DashboardPage() {
                     <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Caller</th>
                     <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Phone</th>
                     <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Status</th>
-                    <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Intent</th>
-                    <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Started</th>
                     <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Duration</th>
                     <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Created</th>
                     <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Action</th>
@@ -410,12 +408,6 @@ export default function DashboardPage() {
                       </td>
                       <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
                         {formatStatus(call)}
-                      </td>
-                      <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
-                        {call.intent || "unknown"}
-                      </td>
-                      <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
-                        {formatDateTime(call.start_timestamp)}
                       </td>
                       <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
                         {formatDuration(call.duration_ms)}
