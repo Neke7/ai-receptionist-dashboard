@@ -7,6 +7,9 @@ import { usePathname, useRouter } from "next/navigation";
 type CallRecord = {
   id: string;
   createdAt: string;
+  start_timestamp: string | null;
+  end_timestamp: string | null;
+  duration_ms: number | null;
   caller_name: string | null;
   caller_phone: string | null;
   caller_email: string | null;
@@ -30,10 +33,54 @@ function formatStatus(call: CallRecord) {
   return "Unknown";
 }
 
+function formatDateTime(value: string | null | undefined) {
+  if (!value) return "—";
+
+  const trimmed = String(value).trim();
+
+  if (/^\d+$/.test(trimmed)) {
+    const date = new Date(Number(trimmed));
+    if (!Number.isNaN(date.getTime())) {
+      return date.toLocaleString();
+    }
+  }
+
+  const date = new Date(trimmed);
+  if (!Number.isNaN(date.getTime())) {
+    return date.toLocaleString();
+  }
+
+  return trimmed;
+}
+
 function formatCreatedAt(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
+  return formatDateTime(value);
+}
+
+function formatDuration(value: number | null | undefined) {
+  if (typeof value !== "number" || Number.isNaN(value) || value < 0) return "—";
+
+  const totalSeconds = Math.floor(value / 1000);
+
+  if (totalSeconds < 60) {
+    return `${totalSeconds}s`;
+  }
+
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  if (minutes < 60) {
+    return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+
+  if (remainingMinutes > 0) {
+    return `${hours}h ${remainingMinutes}m`;
+  }
+
+  return `${hours}h`;
 }
 
 function Sidebar() {
@@ -346,6 +393,8 @@ export default function DashboardPage() {
                     <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Phone</th>
                     <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Status</th>
                     <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Intent</th>
+                    <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Started</th>
+                    <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Duration</th>
                     <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Created</th>
                     <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Action</th>
                   </tr>
@@ -364,6 +413,12 @@ export default function DashboardPage() {
                       </td>
                       <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
                         {call.intent || "unknown"}
+                      </td>
+                      <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
+                        {formatDateTime(call.start_timestamp)}
+                      </td>
+                      <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
+                        {formatDuration(call.duration_ms)}
                       </td>
                       <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
                         {formatCreatedAt(call.createdAt)}
@@ -440,7 +495,6 @@ export default function DashboardPage() {
     </div>
   );
 }
-
 
 
 
