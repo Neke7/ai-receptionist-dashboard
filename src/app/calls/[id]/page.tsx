@@ -41,6 +41,7 @@ type CallRecord = {
   start_timestamp: string | null;
   end_timestamp: string | null;
   duration_ms: number | null;
+  recording_url: string | null;
 };
 
 function normalizeOutcome(
@@ -303,6 +304,16 @@ export default function CallDetailsPage() {
               <label className="text-sm">Duration</label>
               <Input value={formatDuration(call.duration_ms)} readOnly />
             </div>
+           
+            {call.recording_url ? (
+              <div className="md:col-span-3">
+                <label className="text-sm">Call Recording</label>
+                <audio controls className="mt-2 w-full">
+                 <source src={call.recording_url} />
+                 Your browser does not support audio playback.
+                </audio>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
 
