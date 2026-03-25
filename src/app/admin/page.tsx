@@ -199,6 +199,22 @@ export default function AdminPage() {
         Create clients + map Retell Agent IDs to tenants.
       </p>
 
+      <Link
+        href="/admin/calls"
+        style={{
+         display: "inline-block",
+         border: "1px solid #111",
+         borderRadius: 8,
+         padding: "8px 12px",
+         background: "#111",
+         color: "white",
+         textDecoration: "none",
+         marginBottom: 16,
+       }}
+     >
+       View All Calls
+     </Link>
+
       {error ? (
         <div
           style={{
