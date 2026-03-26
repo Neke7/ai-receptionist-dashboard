@@ -336,7 +336,7 @@ export default function AdminCallsPage() {
                     </td>
                     <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
                       <Link
-                        href={`/calls/${call.id}`}
+                        href={`/admin/calls/${call.id}`}
                         style={{
                           display: "inline-block",
                           border: "1px solid #111",
