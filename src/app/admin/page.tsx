@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type ClientRecord = {
   id: string;
@@ -21,6 +22,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const router = useRouter();
 
   async function loadClients() {
     setLoading(true);
@@ -192,28 +194,64 @@ export default function AdminPage() {
     }
   }
 
+  async function handleAdminLogout() {
+    await fetch("/api/admin/logout", {
+      method: "POST",
+    });
+
+    router.push("/admin/login");
+    router.refresh();
+  }
+
   return (
     <main style={{ padding: 24 }}>
-      <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 8 }}>Admin</h1>
-      <p style={{ color: "#666", marginBottom: 24 }}>
-        Create clients + map Retell Agent IDs to tenants.
-      </p>
-
-      <Link
-        href="/admin/calls"
+      <div
         style={{
-         display: "inline-block",
-         border: "1px solid #111",
-         borderRadius: 8,
-         padding: "8px 12px",
-         background: "#111",
-         color: "white",
-         textDecoration: "none",
-         marginBottom: 16,
-       }}
-     >
-       View All Calls
-     </Link>
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 16,
+          marginBottom: 24,
+        }}
+      >
+        <div>
+          <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 8 }}>Admin</h1>
+          <p style={{ color: "#666" }}>
+            Create clients + map Retell Agent IDs to tenants.
+          </p>
+        </div>
+
+        <button
+          onClick={handleAdminLogout}
+          style={{
+            border: "1px solid #111",
+            borderRadius: 8,
+            padding: "8px 12px",
+            background: "#111",
+            color: "white",
+            cursor: "pointer",
+          }}
+        >
+          Admin Logout
+        </button>
+      </div>
+
+      <div style={{ marginBottom: 24 }}>
+        <Link
+          href="/admin/calls"
+          style={{
+            display: "inline-block",
+            border: "1px solid #111",
+            borderRadius: 8,
+            padding: "8px 12px",
+            background: "#111",
+            color: "white",
+            textDecoration: "none",
+          }}
+        >
+          View All Calls
+        </Link>
+      </div>
 
       {error ? (
         <div
@@ -449,9 +487,7 @@ export default function AdminPage() {
                         </button>
 
                         <button
-                          onClick={() =>
-                            handleDeleteClient(client.id, client.name)
-                          }
+                          onClick={() => handleDeleteClient(client.id, client.name)}
                           style={{
                             border: "1px solid #b91c1c",
                             borderRadius: 8,

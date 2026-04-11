@@ -1,52 +1,50 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-function unauthorized() {
-  return new NextResponse("Authentication required", {
-    status: 401,
-    headers: {
-      "WWW-Authenticate": 'Basic realm="AI Receptionist Admin"',
-    },
-  });
-}
+const CLIENT_PROTECTED_ROUTES = ["/", "/calls"];
+const ADMIN_BASE_ROUTE = "/admin";
+const ADMIN_LOGIN_ROUTE = "/admin/login";
+const CLIENT_LOGIN_ROUTE = "/login";
 
-export default function proxy(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Never protect Next internals/static assets
-  if (
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/favicon.ico") ||
-    pathname.startsWith("/robots.txt") ||
-    pathname.startsWith("/sitemap.xml")
-  ) {
+  const clientApiKey = req.cookies.get("client_api_key")?.value;
+  const adminAuth = req.cookies.get("admin_auth")?.value;
+
+  const isAdminLoginRoute = pathname === ADMIN_LOGIN_ROUTE;
+
+  const isAdminProtectedRoute =
+    pathname === ADMIN_BASE_ROUTE ||
+    (pathname.startsWith(`${ADMIN_BASE_ROUTE}/`) && !isAdminLoginRoute);
+
+  const isClientProtectedRoute = CLIENT_PROTECTED_ROUTES.some((route) => {
+    if (route === "/") return pathname === "/";
+    return pathname === route || pathname.startsWith(`${route}/`);
+  });
+
+  if (isAdminLoginRoute) {
+    if (adminAuth === "true") {
+      return NextResponse.redirect(new URL("/admin", req.url));
+    }
     return NextResponse.next();
   }
 
-  // ✅ Only protect admin routes
-  const isAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
-  if (!isAdmin) return NextResponse.next();
-
-  const user = process.env.DASH_USER || "";
-  const pass = process.env.DASH_PASS || "";
-
-  // If creds missing, block (safer)
-  if (!user || !pass) return unauthorized();
-
-  const authHeader = req.headers.get("authorization") || "";
-  if (!authHeader.toLowerCase().startsWith("basic ")) return unauthorized();
-
-  try {
-    const encoded = authHeader.slice(6).trim();
-    const decoded = atob(encoded); // Edge-safe
-    const [u, p] = decoded.split(":");
-    if (u === user && p === pass) return NextResponse.next();
-    return unauthorized();
-  } catch {
-    return unauthorized();
+  if (isAdminProtectedRoute) {
+    if (adminAuth !== "true") {
+      return NextResponse.redirect(new URL(ADMIN_LOGIN_ROUTE, req.url));
+    }
+    return NextResponse.next();
   }
+
+  if (isClientProtectedRoute) {
+    if (!clientApiKey) {
+      return NextResponse.redirect(new URL(CLIENT_LOGIN_ROUTE, req.url));
+    }
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/:path*"],
+  matcher: ["/", "/calls/:path*", "/admin/:path*"],
 };

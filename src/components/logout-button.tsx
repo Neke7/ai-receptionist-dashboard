@@ -3,29 +3,33 @@
 import { usePathname, useRouter } from "next/navigation";
 
 export default function LogoutButton() {
-  const router = useRouter();
   const pathname = usePathname();
+  const router = useRouter();
 
-  // Hide logout button on login/auth pages
-  if (pathname === "/login" || pathname === "/auth-check") {
-    return null;
-  }
+  const isAdminRoute =
+    pathname === "/admin" || pathname.startsWith("/admin/");
 
   async function handleLogout() {
-    const confirmed = window.confirm("Are you sure you want to log out?");
-
-    if (!confirmed) return;
-
     try {
-      await fetch("/api/auth/logout", {
+      if (isAdminRoute) {
+        await fetch("/api/admin/logout", {
+          method: "POST",
+        });
+
+        router.push("/admin/login");
+        router.refresh();
+        return;
+      }
+
+      await fetch("/api/logout", {
         method: "POST",
       });
-    } catch {
-      // ignore errors and still redirect
-    }
 
-    router.push("/login");
-    router.refresh();
+      router.push("/login");
+      router.refresh();
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
   }
 
   return (
@@ -33,13 +37,14 @@ export default function LogoutButton() {
       onClick={handleLogout}
       style={{
         position: "fixed",
-        top: "16px",
-        right: "16px",
-        zIndex: 9999,
+        top: 16,
+        right: 16,
+        zIndex: 1000,
+        border: "1px solid #111",
+        borderRadius: 8,
         padding: "8px 12px",
-        border: "1px solid #ccc",
-        borderRadius: "8px",
-        background: "white",
+        background: "#111",
+        color: "white",
         cursor: "pointer",
       }}
     >
@@ -47,4 +52,3 @@ export default function LogoutButton() {
     </button>
   );
 }
-
