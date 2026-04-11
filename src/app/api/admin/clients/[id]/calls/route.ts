@@ -5,6 +5,12 @@ const BACKEND =
   process.env.NEXT_PUBLIC_BACKEND_URL?.trim() ||
   "http://localhost:3001";
 
+function adminBasicAuth(): string {
+  const user = process.env.DASH_USER || "";
+  const pass = process.env.DASH_PASS || "";
+  return "Basic " + Buffer.from(`${user}:${pass}`).toString("base64");
+}
+
 type Params = { id: string };
 
 export async function GET(
@@ -16,6 +22,7 @@ export async function GET(
 
     const res = await fetch(`${BACKEND}/api/clients/${id}/calls`, {
       cache: "no-store",
+      headers: { Authorization: adminBasicAuth() },
     });
 
     const text = await res.text();

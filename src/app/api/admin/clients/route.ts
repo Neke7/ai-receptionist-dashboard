@@ -5,10 +5,19 @@ const BACKEND =
   process.env.NEXT_PUBLIC_BACKEND_URL?.trim() ||
   "http://localhost:3001";
 
+function adminBasicAuth(): string {
+  const user = process.env.DASH_USER || "";
+  const pass = process.env.DASH_PASS || "";
+  return "Basic " + Buffer.from(`${user}:${pass}`).toString("base64");
+}
+
 // GET /api/admin/clients  -> proxies to backend GET /api/clients
 export async function GET() {
   try {
-    const res = await fetch(`${BACKEND}/api/clients`, { cache: "no-store" });
+    const res = await fetch(`${BACKEND}/api/clients`, {
+      cache: "no-store",
+      headers: { Authorization: adminBasicAuth() },
+    });
     const text = await res.text();
 
     return new NextResponse(text, {
@@ -33,7 +42,10 @@ export async function POST(req: Request) {
 
     const res = await fetch(`${BACKEND}/api/clients`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: adminBasicAuth(),
+      },
       body: JSON.stringify(body),
     });
 
