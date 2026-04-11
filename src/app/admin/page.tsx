@@ -236,7 +236,7 @@ export default function AdminPage() {
         </button>
       </div>
 
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 24, display: "flex", gap: 8 }}>
         <Link
           href="/admin/calls"
           style={{
@@ -250,6 +250,21 @@ export default function AdminPage() {
           }}
         >
           View All Calls
+        </Link>
+
+        <Link
+          href="/admin/analytics"
+          style={{
+            display: "inline-block",
+            border: "1px solid #111",
+            borderRadius: 8,
+            padding: "8px 12px",
+            background: "#111",
+            color: "white",
+            textDecoration: "none",
+          }}
+        >
+          Analytics
         </Link>
       </div>
 
