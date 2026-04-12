@@ -6,8 +6,8 @@ const BACKEND =
   "http://localhost:3001";
 
 function adminBasicAuth(): string {
-  const user = process.env.DASH_USER || "";
-  const pass = process.env.DASH_PASS || "";
+  const user = process.env.ADMIN_USERNAME || process.env.DASH_USER || "";
+  const pass = process.env.ADMIN_PASSWORD || process.env.DASH_PASS || "";
   return "Basic " + Buffer.from(`${user}:${pass}`).toString("base64");
 }
 
