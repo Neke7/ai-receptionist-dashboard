@@ -3,10 +3,18 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUpRight, RefreshCw, Search } from "lucide-react";
+import { ArrowUpRight, Download, RefreshCw, Search } from "lucide-react";
 
 import AppShell from "@/components/layout/AppShell";
 import StatusBadge from "@/components/status-badge";
+import {
+  downloadCsv,
+  formatBoolForCsv,
+  formatDurationForCsv,
+  formatOutcomeForCsv,
+  formatTimestampForCsv,
+  toCsv,
+} from "@/lib/csv";
 
 type CallRecord = {
   id: string;
@@ -140,16 +148,59 @@ export default function CallsPage() {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
+  function exportCsv() {
+    const headers = [
+      "Date",
+      "Caller Name",
+      "Caller Phone",
+      "Caller Email",
+      "Intent",
+      "Outcome",
+      "Summary",
+      "Duration",
+      "Booked",
+      "Follow Up",
+    ];
+
+    const rows = calls.map((c) => [
+      formatTimestampForCsv(c.createdAt),
+      c.caller_name ?? "",
+      c.caller_phone ?? "",
+      c.caller_email ?? "",
+      c.intent ?? "",
+      formatOutcomeForCsv(c.call_outcome),
+      c.call_summary ?? "",
+      formatDurationForCsv(c.duration_ms),
+      formatBoolForCsv(c.appointment_booked),
+      formatBoolForCsv(c.callback_requested),
+    ]);
+
+    const csv = toCsv(headers, rows);
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadCsv(`calls-${stamp}.csv`, csv);
+  }
+
   return (
     <AppShell
       variant="client"
       title="All Calls"
       subtitle="Search, filter, and review every receptionist call."
       actions={
-        <button onClick={loadCalls} className="btn-secondary">
-          <RefreshCw className="h-4 w-4" />
-          Refresh
-        </button>
+        <>
+          <button
+            onClick={exportCsv}
+            className="btn-secondary"
+            disabled={loading || calls.length === 0}
+            title="Export all calls to CSV"
+          >
+            <Download className="h-4 w-4" />
+            Export CSV
+          </button>
+          <button onClick={loadCalls} className="btn-secondary">
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </button>
+        </>
       }
     >
       <div className="surface p-4">
