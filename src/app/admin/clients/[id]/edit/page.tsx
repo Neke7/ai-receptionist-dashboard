@@ -1,8 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { ArrowLeft, Save } from "lucide-react";
+
+import AppShell from "@/components/layout/AppShell";
 
 type ClientRecord = {
   id: string;
@@ -56,9 +58,7 @@ export default function EditClientPage() {
       const clients = Array.isArray(data) ? (data as ClientRecord[]) : [];
       const found = clients.find((c) => c.id === clientId);
 
-      if (!found) {
-        throw new Error("Client not found");
-      }
+      if (!found) throw new Error("Client not found");
 
       setClient(found);
       setName(found.name || "");
@@ -87,9 +87,7 @@ export default function EditClientPage() {
     try {
       const res = await fetch(`/api/admin/clients/${clientId}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
           email,
@@ -98,7 +96,6 @@ export default function EditClientPage() {
       });
 
       const text = await res.text();
-
       let data: unknown = {};
       try {
         data = text ? JSON.parse(text) : {};
@@ -128,184 +125,110 @@ export default function EditClientPage() {
   }
 
   return (
-    <main style={{ padding: 24 }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 12,
-          marginBottom: 24,
-        }}
-      >
-        <div>
-          <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 8 }}>
-            Edit Client
-          </h1>
-          <p style={{ color: "#666" }}>
-            Update the client’s name, email, and Retell Agent ID.
-          </p>
-        </div>
-
-        <Link
-          href="/admin"
-          style={{
-            border: "1px solid #ccc",
-            borderRadius: 8,
-            padding: "8px 12px",
-            background: "white",
-            textDecoration: "none",
-            color: "black",
-            height: "fit-content",
-          }}
-        >
-          Back to Admin
-        </Link>
-      </div>
-
+    <AppShell
+      variant="admin"
+      title="Edit Client"
+      subtitle="Update the client's name, email, and Retell Agent ID."
+      actions={
+        <button onClick={() => router.push("/admin")} className="btn-secondary">
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </button>
+      }
+    >
       {loading ? (
-        <div>Loading client...</div>
+        <div className="surface p-10 text-center text-sm text-muted-foreground">
+          Loading client…
+        </div>
       ) : !client ? (
-        <div
-          style={{
-            color: "crimson",
-            border: "1px solid #f2c2c2",
-            borderRadius: 8,
-            padding: 12,
-          }}
-        >
+        <div className="surface border-red-500/20 bg-red-500/5 p-4 text-sm text-red-300">
           {error || "Client not found"}
         </div>
       ) : (
-        <section
-          style={{
-            border: "1px solid #e5e5e5",
-            borderRadius: 12,
-            padding: 20,
-            maxWidth: 900,
-          }}
-        >
-          <div style={{ marginBottom: 16, color: "#666" }}>
-            Client ID: {client.id}
+        <div className="max-w-3xl">
+          <div className="surface p-6">
+            <div className="mb-5 text-xs text-muted-foreground">
+              Client ID:{" "}
+              <span className="font-mono text-foreground">{client.id}</span>
+            </div>
+
+            {error ? (
+              <div className="mb-4 rounded-md border border-red-500/20 bg-red-500/5 px-3 py-2 text-sm text-red-300">
+                {error}
+              </div>
+            ) : null}
+
+            {success ? (
+              <div className="mb-4 rounded-md border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-sm text-emerald-300">
+                {success}
+              </div>
+            ) : null}
+
+            <form onSubmit={handleSave}>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                    Name
+                  </label>
+                  <input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="input-base"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                    Email
+                  </label>
+                  <input
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="input-base"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                    API Key <span className="text-muted-foreground/60">(read-only)</span>
+                  </label>
+                  <input
+                    value={client.apiKey}
+                    disabled
+                    className="input-base font-mono text-xs opacity-60"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                    Retell Agent ID
+                  </label>
+                  <input
+                    value={retellAgentId}
+                    onChange={(e) => setRetellAgentId(e.target.value)}
+                    placeholder="agent_..."
+                    className="input-base font-mono text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-2 border-t border-white/5 pt-5">
+                <button
+                  type="button"
+                  onClick={() => router.push("/admin")}
+                  className="btn-secondary"
+                >
+                  Cancel
+                </button>
+                <button type="submit" disabled={saving} className="btn-primary">
+                  <Save className="h-4 w-4" />
+                  {saving ? "Saving…" : "Save changes"}
+                </button>
+              </div>
+            </form>
           </div>
-
-          {error ? (
-            <div
-              style={{
-                color: "crimson",
-                border: "1px solid #f2c2c2",
-                borderRadius: 8,
-                padding: 12,
-                marginBottom: 16,
-              }}
-            >
-              Error: {error}
-            </div>
-          ) : null}
-
-          {success ? (
-            <div
-              style={{
-                color: "green",
-                border: "1px solid #b7e3b7",
-                borderRadius: 8,
-                padding: 12,
-                marginBottom: 16,
-              }}
-            >
-              {success}
-            </div>
-          ) : null}
-
-          <form onSubmit={handleSave}>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 16,
-                marginBottom: 16,
-              }}
-            >
-              <div>
-                <label style={{ display: "block", marginBottom: 6 }}>Name</label>
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: 10,
-                    border: "1px solid #ccc",
-                    borderRadius: 8,
-                  }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: "block", marginBottom: 6 }}>Email</label>
-                <input
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: 10,
-                    border: "1px solid #ccc",
-                    borderRadius: 8,
-                  }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: "block", marginBottom: 6 }}>
-                  API Key
-                </label>
-                <input
-                  value={client.apiKey}
-                  disabled
-                  style={{
-                    width: "100%",
-                    padding: 10,
-                    border: "1px solid #ccc",
-                    borderRadius: 8,
-                    background: "#f7f7f7",
-                    color: "#666",
-                  }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: "block", marginBottom: 6 }}>
-                  Retell Agent ID
-                </label>
-                <input
-                  value={retellAgentId}
-                  onChange={(e) => setRetellAgentId(e.target.value)}
-                  placeholder="agent_..."
-                  style={{
-                    width: "100%",
-                    padding: 10,
-                    border: "1px solid #ccc",
-                    borderRadius: 8,
-                  }}
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={saving}
-              style={{
-                border: "1px solid #111",
-                borderRadius: 8,
-                padding: "10px 14px",
-                background: "#111",
-                color: "white",
-                cursor: "pointer",
-              }}
-            >
-              {saving ? "Saving..." : "Save Changes"}
-            </button>
-          </form>
-        </section>
+        </div>
       )}
-    </main>
+    </AppShell>
   );
 }

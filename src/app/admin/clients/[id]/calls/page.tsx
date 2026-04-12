@@ -1,8 +1,18 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import {
+  ArrowLeft,
+  Calendar,
+  CheckCircle2,
+  Info,
+  PhoneCall,
+  RefreshCw,
+} from "lucide-react";
+
+import AppShell from "@/components/layout/AppShell";
+import StatusBadge from "@/components/status-badge";
 
 type CallRecord = {
   id: string;
@@ -21,26 +31,47 @@ type CallRecord = {
   call_successful: boolean | null;
 };
 
-function formatStatus(call: CallRecord) {
-  if (call.call_outcome === "booked") return "Booked";
-  if (call.call_outcome === "follow_up") return "Follow Up";
-  if (call.call_outcome === "info_only") return "Info Only";
-  return "Unknown";
-}
-
-function formatIntent(intent: string | null) {
-  if (!intent) return "unknown";
-  return intent;
-}
-
 function formatCreatedAt(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString();
 }
 
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  accent,
+}: {
+  label: string;
+  value: number;
+  icon: React.ComponentType<{ className?: string }>;
+  accent: string;
+}) {
+  return (
+    <div className="surface p-5">
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            {label}
+          </div>
+          <div className="mt-2 text-3xl font-semibold tracking-tight">
+            {value}
+          </div>
+        </div>
+        <div
+          className={`flex h-9 w-9 items-center justify-center rounded-lg ${accent}`}
+        >
+          <Icon className="h-4 w-4" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminClientCallsPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const clientId = params?.id;
 
   const [calls, setCalls] = useState<CallRecord[]>([]);
@@ -60,7 +91,6 @@ export default function AdminClientCallsPage() {
 
       const text = await res.text();
       let data: unknown = [];
-
       try {
         data = text ? JSON.parse(text) : [];
       } catch {
@@ -98,116 +128,109 @@ export default function AdminClientCallsPage() {
   }, [calls]);
 
   return (
-    <main style={{ padding: 24 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 24 }}>
-        <div>
-          <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 8 }}>
-            Client Calls
-          </h1>
-          <p style={{ color: "#666" }}>
-            Viewing calls for client ID: {clientId}
-          </p>
-        </div>
-
-        <div style={{ display: "flex", gap: 12 }}>
-          <button
-            onClick={loadCalls}
-            style={{
-              border: "1px solid #ccc",
-              borderRadius: 8,
-              padding: "8px 12px",
-              background: "white",
-              cursor: "pointer",
-            }}
-          >
+    <AppShell
+      variant="admin"
+      title="Client Calls"
+      subtitle={`Calls for client ID: ${clientId}`}
+      actions={
+        <>
+          <button onClick={loadCalls} className="btn-secondary">
+            <RefreshCw className="h-4 w-4" />
             Refresh
           </button>
-
-          <Link
-            href="/admin"
-            style={{
-              border: "1px solid #ccc",
-              borderRadius: 8,
-              padding: "8px 12px",
-              background: "white",
-              textDecoration: "none",
-              color: "black",
-            }}
-          >
-            Back to Admin
-          </Link>
-        </div>
+          <button onClick={() => router.push("/admin")} className="btn-secondary">
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </button>
+        </>
+      }
+    >
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Total"
+          value={totals.total}
+          icon={PhoneCall}
+          accent="bg-indigo-500/10 text-indigo-300"
+        />
+        <StatCard
+          label="Booked"
+          value={totals.booked}
+          icon={CheckCircle2}
+          accent="bg-emerald-500/10 text-emerald-300"
+        />
+        <StatCard
+          label="Follow Up"
+          value={totals.followUp}
+          icon={Calendar}
+          accent="bg-amber-500/10 text-amber-300"
+        />
+        <StatCard
+          label="Info Only"
+          value={totals.infoOnly}
+          icon={Info}
+          accent="bg-sky-500/10 text-sky-300"
+        />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 16, marginBottom: 24 }}>
-        <div style={{ border: "1px solid #e5e5e5", borderRadius: 12, padding: 16 }}>
-          <div style={{ color: "#666", marginBottom: 6 }}>Total</div>
-          <div style={{ fontSize: 28, fontWeight: 700 }}>{totals.total}</div>
-        </div>
-        <div style={{ border: "1px solid #e5e5e5", borderRadius: 12, padding: 16 }}>
-          <div style={{ color: "#666", marginBottom: 6 }}>Booked</div>
-          <div style={{ fontSize: 28, fontWeight: 700 }}>{totals.booked}</div>
-        </div>
-        <div style={{ border: "1px solid #e5e5e5", borderRadius: 12, padding: 16 }}>
-          <div style={{ color: "#666", marginBottom: 6 }}>Follow Up</div>
-          <div style={{ fontSize: 28, fontWeight: 700 }}>{totals.followUp}</div>
-        </div>
-        <div style={{ border: "1px solid #e5e5e5", borderRadius: 12, padding: 16 }}>
-          <div style={{ color: "#666", marginBottom: 6 }}>Info Only</div>
-          <div style={{ fontSize: 28, fontWeight: 700 }}>{totals.infoOnly}</div>
-        </div>
+      <div className="mt-6">
+        {loading ? (
+          <div className="surface p-10 text-center text-sm text-muted-foreground">
+            Loading calls…
+          </div>
+        ) : error ? (
+          <div className="surface border-red-500/20 bg-red-500/5 p-4 text-sm text-red-300">
+            {error}
+          </div>
+        ) : calls.length === 0 ? (
+          <div className="surface p-10 text-center">
+            <div className="text-sm font-medium">No calls yet</div>
+            <div className="mt-1 text-sm text-muted-foreground">
+              This client hasn&apos;t received any calls.
+            </div>
+          </div>
+        ) : (
+          <div className="surface overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="surface-table">
+                <thead>
+                  <tr>
+                    <th>Caller</th>
+                    <th>Phone</th>
+                    <th>Status</th>
+                    <th>Intent</th>
+                    <th>Created</th>
+                    <th>Summary</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {calls.map((call) => (
+                    <tr key={call.id}>
+                      <td className="font-medium">
+                        {call.caller_name || "Unknown"}
+                      </td>
+                      <td className="text-muted-foreground">
+                        {call.caller_phone || "—"}
+                      </td>
+                      <td>
+                        <StatusBadge outcome={call.call_outcome} />
+                      </td>
+                      <td className="text-muted-foreground">
+                        {call.intent || "—"}
+                      </td>
+                      <td className="text-muted-foreground">
+                        {formatCreatedAt(call.createdAt)}
+                      </td>
+                      <td className="max-w-[420px] truncate text-muted-foreground">
+                        {call.call_summary || "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
-
-      {loading ? (
-        <div>Loading calls...</div>
-      ) : error ? (
-        <div style={{ color: "crimson", border: "1px solid #f2c2c2", padding: 12, borderRadius: 8 }}>
-          Error: {error}
-        </div>
-      ) : calls.length === 0 ? (
-        <div style={{ border: "1px solid #e5e5e5", borderRadius: 12, padding: 16 }}>
-          No calls found for this client yet.
-        </div>
-      ) : (
-        <div style={{ border: "1px solid #e5e5e5", borderRadius: 12, overflow: "hidden" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: "#f8f8f8", textAlign: "left" }}>
-                <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Caller</th>
-                <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Phone</th>
-                <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Status</th>
-                <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Intent</th>
-                <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Created</th>
-                <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Summary</th>
-              </tr>
-            </thead>
-            <tbody>
-              {calls.map((call) => (
-                <tr key={call.id}>
-                  <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
-                    {call.caller_name || "Unknown"}
-                  </td>
-                  <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
-                    {call.caller_phone || "—"}
-                  </td>
-                  <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
-                    {formatStatus(call)}
-                  </td>
-                  <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
-                    {formatIntent(call.intent)}
-                  </td>
-                  <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
-                    {formatCreatedAt(call.createdAt)}
-                  </td>
-                  <td style={{ padding: 12, borderBottom: "1px solid #eee", maxWidth: 420 }}>
-                    {call.call_summary || "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </main>
+    </AppShell>
   );
 }

@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+
+import AppShell from "@/components/layout/AppShell";
+import StatusBadge from "@/components/status-badge";
 
 type AdminCallRecord = {
   id: string;
@@ -34,51 +38,54 @@ type AdminCallRecord = {
 
 function formatDateTime(value: string | null | undefined) {
   if (!value) return "—";
-
   const trimmed = String(value).trim();
-
   if (/^\d+$/.test(trimmed)) {
     const date = new Date(Number(trimmed));
-    if (!Number.isNaN(date.getTime())) {
-      return date.toLocaleString();
-    }
+    if (!Number.isNaN(date.getTime())) return date.toLocaleString();
   }
-
   const date = new Date(trimmed);
-  if (!Number.isNaN(date.getTime())) {
-    return date.toLocaleString();
-  }
-
+  if (!Number.isNaN(date.getTime())) return date.toLocaleString();
   return trimmed;
 }
 
 function formatDuration(value: number | null | undefined) {
   if (typeof value !== "number" || Number.isNaN(value) || value < 0) return "—";
-
   const totalSeconds = Math.floor(value / 1000);
-
-  if (totalSeconds < 60) {
-    return `${totalSeconds}s`;
-  }
-
+  if (totalSeconds < 60) return `${totalSeconds}s`;
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
-
   if (minutes < 60) {
     return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
   }
-
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
-
   return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
 }
 
-function formatStatus(call: AdminCallRecord) {
-  if (call.call_outcome === "booked") return "Booked";
-  if (call.call_outcome === "follow_up") return "Follow Up";
-  if (call.call_outcome === "info_only") return "Info Only";
-  return "Unknown";
+function SectionCard({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="surface p-6">
+      <h3 className="mb-5 text-sm font-semibold">{title}</h3>
+      {children}
+    </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div>
+      <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        {label}
+      </div>
+      <div className="mt-1 text-sm text-foreground">{value ?? "—"}</div>
+    </div>
+  );
 }
 
 export default function AdminCallDetailPage() {
@@ -95,10 +102,7 @@ export default function AdminCallDetailPage() {
     setError("");
 
     try {
-      const res = await fetch(`/api/admin/calls/${id}`, {
-        cache: "no-store",
-      });
-
+      const res = await fetch(`/api/admin/calls/${id}`, { cache: "no-store" });
       const text = await res.text();
 
       let data: unknown = null;
@@ -110,9 +114,7 @@ export default function AdminCallDetailPage() {
 
       if (!res.ok) {
         throw new Error(
-          typeof data === "object" &&
-            data &&
-            "error" in (data as Record<string, unknown>)
+          typeof data === "object" && data && "error" in (data as Record<string, unknown>)
             ? String((data as Record<string, unknown>).error)
             : `API /api/admin/calls/${id} failed (${res.status})`
         );
@@ -132,251 +134,142 @@ export default function AdminCallDetailPage() {
   }, [id]);
 
   if (loading) {
-    return <main style={{ padding: 24 }}>Loading call...</main>;
+    return (
+      <AppShell variant="admin" title="Call Detail">
+        <div className="surface p-10 text-center text-sm text-muted-foreground">
+          Loading call…
+        </div>
+      </AppShell>
+    );
   }
 
   if (error || !call) {
     return (
-      <main style={{ padding: 24 }}>
-        <div
-          style={{
-            color: "crimson",
-            border: "1px solid #f2c2c2",
-            borderRadius: 8,
-            padding: 12,
-            marginBottom: 16,
-          }}
-        >
-          Error: {error || "Call not found"}
+      <AppShell
+        variant="admin"
+        title="Call Detail"
+        actions={
+          <button onClick={() => router.push("/admin/calls")} className="btn-secondary">
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </button>
+        }
+      >
+        <div className="surface border-red-500/20 bg-red-500/5 p-4 text-sm text-red-300">
+          {error || "Call not found"}
         </div>
-
-        <button
-          onClick={() => router.push("/admin/calls")}
-          style={{
-            border: "1px solid #111",
-            borderRadius: 8,
-            padding: "8px 12px",
-            background: "#111",
-            color: "white",
-            cursor: "pointer",
-          }}
-        >
-          Back to Admin Calls
-        </button>
-      </main>
+      </AppShell>
     );
   }
 
   return (
-    <main style={{ padding: 24 }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: 16,
-          marginBottom: 24,
-        }}
-      >
-        <div>
-          <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 8 }}>
-            Admin Call Detail
-          </h1>
-          <p style={{ color: "#666" }}>
-            Full call detail for admin review.
-          </p>
-        </div>
-
-        <button
-          onClick={() => router.push("/admin/calls")}
-          style={{
-            border: "1px solid #111",
-            borderRadius: 8,
-            padding: "8px 12px",
-            background: "#111",
-            color: "white",
-            cursor: "pointer",
-          }}
-        >
-          Back to Admin Calls
+    <AppShell
+      variant="admin"
+      title="Call Detail"
+      subtitle={`ID ${call.id}`}
+      actions={
+        <button onClick={() => router.push("/admin/calls")} className="btn-secondary">
+          <ArrowLeft className="h-4 w-4" />
+          Back to All Calls
         </button>
+      }
+    >
+      <div className="mb-6 flex flex-wrap items-center gap-2">
+        <StatusBadge outcome={call.call_outcome} />
+        {call.callback_requested ? (
+          <span className="badge">
+            <span className="badge-dot bg-amber-400" />
+            Callback requested
+          </span>
+        ) : null}
+        {call.call_successful ? (
+          <span className="badge">
+            <span className="badge-dot bg-emerald-400" />
+            Successful
+          </span>
+        ) : null}
       </div>
 
-      <section
-        style={{
-          border: "1px solid #e5e5e5",
-          borderRadius: 12,
-          padding: 20,
-          marginBottom: 24,
-        }}
-      >
-        <div style={{ fontWeight: 600, marginBottom: 12 }}>Call Timing</div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-            gap: 16,
-          }}
-        >
-          <div>
-            <div style={{ fontSize: 14, color: "#666", marginBottom: 6 }}>Started</div>
-            <div>{formatDateTime(call.start_timestamp)}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 14, color: "#666", marginBottom: 6 }}>Ended</div>
-            <div>{formatDateTime(call.end_timestamp)}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 14, color: "#666", marginBottom: 6 }}>Duration</div>
-            <div>{formatDuration(call.duration_ms)}</div>
-          </div>
-        </div>
-
-        {call.recording_url ? (
-          <div style={{ marginTop: 20 }}>
-            <div style={{ fontSize: 14, color: "#666", marginBottom: 6 }}>
-              Call Recording
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <div className="space-y-5 lg:col-span-1">
+          <SectionCard title="Call Timing">
+            <div className="space-y-4">
+              <InfoRow label="Started" value={formatDateTime(call.start_timestamp)} />
+              <InfoRow label="Ended" value={formatDateTime(call.end_timestamp)} />
+              <InfoRow label="Duration" value={formatDuration(call.duration_ms)} />
             </div>
-            <audio controls style={{ width: "100%" }}>
-              <source src={call.recording_url} />
-              Your browser does not support audio playback.
-            </audio>
-          </div>
-        ) : null}
-      </section>
+          </SectionCard>
 
-      <section
-        style={{
-          border: "1px solid #e5e5e5",
-          borderRadius: 12,
-          padding: 20,
-          marginBottom: 24,
-        }}
-      >
-        <div style={{ fontWeight: 600, marginBottom: 12 }}>Client</div>
+          {call.recording_url ? (
+            <SectionCard title="Recording">
+              <audio controls className="w-full">
+                <source src={call.recording_url} />
+                Your browser does not support audio playback.
+              </audio>
+            </SectionCard>
+          ) : null}
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-            gap: 16,
-          }}
-        >
-          <div>
-            <div style={{ fontSize: 14, color: "#666", marginBottom: 6 }}>Client Name</div>
-            <div>{call.client?.name || "Unassigned"}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 14, color: "#666", marginBottom: 6 }}>Client Email</div>
-            <div>{call.client?.email || "—"}</div>
-          </div>
-        </div>
-      </section>
-
-      <section
-        style={{
-          border: "1px solid #e5e5e5",
-          borderRadius: 12,
-          padding: 20,
-          marginBottom: 24,
-        }}
-      >
-        <div style={{ fontWeight: 600, marginBottom: 12 }}>Caller</div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-            gap: 16,
-          }}
-        >
-          <div>
-            <div style={{ fontSize: 14, color: "#666", marginBottom: 6 }}>Name</div>
-            <div>{call.caller_name || "Unknown"}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 14, color: "#666", marginBottom: 6 }}>Phone</div>
-            <div>{call.caller_phone || "—"}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 14, color: "#666", marginBottom: 6 }}>Email</div>
-            <div>{call.caller_email || "—"}</div>
-          </div>
-        </div>
-      </section>
-
-      <section
-        style={{
-          border: "1px solid #e5e5e5",
-          borderRadius: 12,
-          padding: 20,
-          marginBottom: 24,
-        }}
-      >
-        <div style={{ fontWeight: 600, marginBottom: 12 }}>Call Summary</div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-            gap: 16,
-            marginBottom: 16,
-          }}
-        >
-          <div>
-            <div style={{ fontSize: 14, color: "#666", marginBottom: 6 }}>Status</div>
-            <div>{formatStatus(call)}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 14, color: "#666", marginBottom: 6 }}>Intent</div>
-            <div>{call.intent || "—"}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 14, color: "#666", marginBottom: 6 }}>Customer Type</div>
-            <div>{call.customer_type || "—"}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 14, color: "#666", marginBottom: 6 }}>Preferred Date</div>
-            <div>{call.preferred_date || "—"}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 14, color: "#666", marginBottom: 6 }}>Preferred Time</div>
-            <div>{call.preferred_time || "—"}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 14, color: "#666", marginBottom: 6 }}>Call Successful</div>
-            <div>{call.call_successful ? "Yes" : "No"}</div>
-          </div>
+          <SectionCard title="Client">
+            <div className="space-y-4">
+              <InfoRow label="Name" value={call.client?.name || "Unassigned"} />
+              <InfoRow label="Email" value={call.client?.email || "—"} />
+            </div>
+          </SectionCard>
         </div>
 
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 14, color: "#666", marginBottom: 6 }}>Summary</div>
-          <div>{call.call_summary || "—"}</div>
-        </div>
+        <div className="space-y-5 lg:col-span-2">
+          <SectionCard title="Caller">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+              <InfoRow label="Name" value={call.caller_name || "Unknown"} />
+              <InfoRow label="Phone" value={call.caller_phone || "—"} />
+              <InfoRow label="Email" value={call.caller_email || "—"} />
+            </div>
+          </SectionCard>
 
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 14, color: "#666", marginBottom: 6 }}>Notes</div>
-          <div style={{ whiteSpace: "pre-wrap" }}>{call.notes || "—"}</div>
-        </div>
+          <SectionCard title="Call Summary">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+              <InfoRow label="Intent" value={call.intent || "—"} />
+              <InfoRow label="Customer Type" value={call.customer_type || "—"} />
+              <InfoRow
+                label="Call Successful"
+                value={call.call_successful ? "Yes" : "No"}
+              />
+              <InfoRow label="Preferred Date" value={call.preferred_date || "—"} />
+              <InfoRow label="Preferred Time" value={call.preferred_time || "—"} />
+              <InfoRow
+                label="Appointment Booked"
+                value={call.appointment_booked ? "Yes" : "No"}
+              />
+            </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-            gap: 16,
-          }}
-        >
-          <div>
-            <div style={{ fontSize: 14, color: "#666", marginBottom: 6 }}>Appointment Booked</div>
-            <div>{call.appointment_booked ? "Yes" : "No"}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 14, color: "#666", marginBottom: 6 }}>Callback Requested</div>
-            <div>{call.callback_requested ? "Yes" : "No"}</div>
-          </div>
+            <div className="mt-6 border-t border-white/5 pt-6">
+              <InfoRow
+                label="Summary"
+                value={
+                  call.call_summary ? (
+                    <span className="whitespace-pre-wrap">{call.call_summary}</span>
+                  ) : (
+                    "—"
+                  )
+                }
+              />
+            </div>
+
+            <div className="mt-6 border-t border-white/5 pt-6">
+              <InfoRow
+                label="Notes"
+                value={
+                  call.notes ? (
+                    <span className="whitespace-pre-wrap">{call.notes}</span>
+                  ) : (
+                    "—"
+                  )
+                }
+              />
+            </div>
+          </SectionCard>
         </div>
-      </section>
-    </main>
+      </div>
+    </AppShell>
   );
 }

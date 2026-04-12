@@ -2,10 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { KeyRound, Loader2, Sparkles } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -44,42 +41,72 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Client Login</CardTitle>
-        </CardHeader>
+    <div className="relative flex min-h-screen items-center justify-center px-4">
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute left-1/2 top-0 h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-indigo-500/20 blur-[120px]" />
+      </div>
 
-        <CardContent className="space-y-3">
-          <div className="text-sm text-muted-foreground">
-            Enter your API key to access your dashboard.
+      <div className="w-full max-w-md">
+        <div className="mb-6 flex flex-col items-center text-center">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-lg shadow-indigo-500/30">
+            <Sparkles className="h-5 w-5 text-white" />
+          </div>
+          <h1 className="mt-4 text-xl font-semibold text-foreground">
+            Welcome back
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Sign in with your API key to access the dashboard.
+          </p>
+        </div>
+
+        <div className="surface p-6">
+          <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+            API Key
+          </label>
+          <div className="relative">
+            <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="password"
+              placeholder="sk_••••••••"
+              value={apiKey}
+              onChange={(e) => {
+                setApiKey(e.target.value);
+                if (error) setError("");
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !loading && apiKey.trim()) onLogin();
+              }}
+              className="input-base pl-9"
+              autoFocus
+            />
           </div>
 
-          <Input
-            placeholder="API Key"
-            value={apiKey}
-            onChange={(e) => {
-              setApiKey(e.target.value);
-              if (error) setError("");
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !loading && apiKey.trim()) {
-                onLogin();
-              }
-            }}
-          />
-
           {error ? (
-            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <div className="mt-3 rounded-md border border-red-500/20 bg-red-500/5 px-3 py-2 text-sm text-red-300">
               {error}
             </div>
           ) : null}
 
-          <Button onClick={onLogin} disabled={loading || !apiKey.trim()}>
-            {loading ? "Logging in..." : "Login"}
-          </Button>
-        </CardContent>
-      </Card>
+          <button
+            onClick={onLogin}
+            disabled={loading || !apiKey.trim()}
+            className="btn-primary mt-4 w-full disabled:opacity-50"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Signing in…
+              </>
+            ) : (
+              "Sign in"
+            )}
+          </button>
+        </div>
+
+        <p className="mt-4 text-center text-xs text-muted-foreground">
+          Having trouble? Contact your account administrator.
+        </p>
+      </div>
     </div>
   );
 }

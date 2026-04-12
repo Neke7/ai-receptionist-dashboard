@@ -2,7 +2,16 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import {
+  Copy,
+  Pencil,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Trash2,
+} from "lucide-react";
+
+import AppShell from "@/components/layout/AppShell";
 
 type ClientRecord = {
   id: string;
@@ -13,6 +22,12 @@ type ClientRecord = {
   createdAt?: string;
 };
 
+function maskKey(key: string): string {
+  if (!key) return "—";
+  if (key.length <= 10) return key;
+  return `${key.slice(0, 6)}••••${key.slice(-4)}`;
+}
+
 export default function AdminPage() {
   const [clients, setClients] = useState<ClientRecord[]>([]);
   const [name, setName] = useState("");
@@ -22,7 +37,8 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const router = useRouter();
+  const [success, setSuccess] = useState("");
+  const [revealedKey, setRevealedKey] = useState<string | null>(null);
 
   async function loadClients() {
     setLoading(true);
@@ -41,9 +57,7 @@ export default function AdminPage() {
 
       if (!res.ok) {
         throw new Error(
-          typeof data === "object" &&
-            data &&
-            "error" in (data as Record<string, unknown>)
+          typeof data === "object" && data && "error" in (data as Record<string, unknown>)
             ? String((data as Record<string, unknown>).error)
             : `Failed to load clients (${res.status})`
         );
@@ -66,13 +80,12 @@ export default function AdminPage() {
     e.preventDefault();
     setSubmitting(true);
     setError("");
+    setSuccess("");
 
     try {
       const res = await fetch("/api/admin/clients", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
           email,
@@ -82,7 +95,6 @@ export default function AdminPage() {
       });
 
       const text = await res.text();
-
       let data: unknown = {};
       try {
         data = text ? JSON.parse(text) : {};
@@ -92,9 +104,7 @@ export default function AdminPage() {
 
       if (!res.ok) {
         throw new Error(
-          typeof data === "object" &&
-            data &&
-            "error" in (data as Record<string, unknown>)
+          typeof data === "object" && data && "error" in (data as Record<string, unknown>)
             ? String((data as Record<string, unknown>).error)
             : `Failed to create client (${res.status})`
         );
@@ -104,6 +114,7 @@ export default function AdminPage() {
       setEmail("");
       setApiKey("");
       setRetellAgentId("");
+      setSuccess("Client created successfully.");
       await loadClients();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create client");
@@ -116,18 +127,15 @@ export default function AdminPage() {
     const confirmed = window.confirm(
       "Are you sure you want to regenerate this client's API key? The old key will stop working."
     );
-
     if (!confirmed) return;
 
     setError("");
-
     try {
       const res = await fetch(`/api/admin/clients/${clientId}/regenerate-key`, {
         method: "POST",
       });
 
       const text = await res.text();
-
       let data: unknown = {};
       try {
         data = text ? JSON.parse(text) : {};
@@ -137,39 +145,32 @@ export default function AdminPage() {
 
       if (!res.ok) {
         throw new Error(
-          typeof data === "object" &&
-            data &&
-            "error" in (data as Record<string, unknown>)
+          typeof data === "object" && data && "error" in (data as Record<string, unknown>)
             ? String((data as Record<string, unknown>).error)
             : `Failed to regenerate API key (${res.status})`
         );
       }
 
       await loadClients();
-      window.alert("API key regenerated successfully.");
+      setSuccess("API key regenerated successfully.");
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to regenerate API key"
-      );
+      setError(err instanceof Error ? err.message : "Failed to regenerate API key");
     }
   }
 
   async function handleDeleteClient(clientId: string, clientName: string) {
     const confirmed = window.confirm(
-      `Are you sure you want to delete "${clientName}"?\n\nThe client will be removed, but their calls will be kept.`
+      `Delete "${clientName}"?\n\nThe client will be removed, but their calls will be kept.`
     );
-
     if (!confirmed) return;
 
     setError("");
-
     try {
       const res = await fetch(`/api/admin/clients/${clientId}/delete`, {
         method: "DELETE",
       });
 
       const text = await res.text();
-
       let data: unknown = {};
       try {
         data = text ? JSON.parse(text) : {};
@@ -179,339 +180,225 @@ export default function AdminPage() {
 
       if (!res.ok) {
         throw new Error(
-          typeof data === "object" &&
-            data &&
-            "error" in (data as Record<string, unknown>)
+          typeof data === "object" && data && "error" in (data as Record<string, unknown>)
             ? String((data as Record<string, unknown>).error)
             : `Failed to delete client (${res.status})`
         );
       }
 
       await loadClients();
-      window.alert("Client deleted successfully.");
+      setSuccess("Client deleted successfully.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete client");
     }
   }
 
-  async function handleAdminLogout() {
-    await fetch("/api/admin/logout", {
-      method: "POST",
-    });
-
-    router.push("/admin/login");
-    router.refresh();
+  async function copyToClipboard(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setSuccess("Copied to clipboard.");
+      setTimeout(() => setSuccess(""), 1500);
+    } catch {
+      // ignore
+    }
   }
 
   return (
-    <main style={{ padding: 24 }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: 16,
-          marginBottom: 24,
-        }}
-      >
-        <div>
-          <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 8 }}>Admin</h1>
-          <p style={{ color: "#666" }}>
-            Create clients + map Retell Agent IDs to tenants.
-          </p>
-        </div>
-
-        <button
-          onClick={handleAdminLogout}
-          style={{
-            border: "1px solid #111",
-            borderRadius: 8,
-            padding: "8px 12px",
-            background: "#111",
-            color: "white",
-            cursor: "pointer",
-          }}
-        >
-          Admin Logout
+    <AppShell
+      variant="admin"
+      title="Clients"
+      subtitle="Manage client accounts and map Retell agents to tenants."
+      actions={
+        <button onClick={loadClients} className="btn-secondary">
+          <RefreshCw className="h-4 w-4" />
+          Refresh
         </button>
-      </div>
-
-      <div style={{ marginBottom: 24, display: "flex", gap: 8 }}>
-        <Link
-          href="/admin/calls"
-          style={{
-            display: "inline-block",
-            border: "1px solid #111",
-            borderRadius: 8,
-            padding: "8px 12px",
-            background: "#111",
-            color: "white",
-            textDecoration: "none",
-          }}
-        >
-          View All Calls
-        </Link>
-
-        <Link
-          href="/admin/analytics"
-          style={{
-            display: "inline-block",
-            border: "1px solid #111",
-            borderRadius: 8,
-            padding: "8px 12px",
-            background: "#111",
-            color: "white",
-            textDecoration: "none",
-          }}
-        >
-          Analytics
-        </Link>
-      </div>
-
+      }
+    >
       {error ? (
-        <div
-          style={{
-            color: "crimson",
-            border: "1px solid #f2c2c2",
-            borderRadius: 8,
-            padding: 12,
-            marginBottom: 24,
-          }}
-        >
-          Error: {error}
+        <div className="surface mb-5 border-red-500/20 bg-red-500/5 p-3 text-sm text-red-300">
+          {error}
+        </div>
+      ) : null}
+      {success ? (
+        <div className="surface mb-5 border-emerald-500/20 bg-emerald-500/5 p-3 text-sm text-emerald-300">
+          {success}
         </div>
       ) : null}
 
-      <section
-        style={{
-          border: "1px solid #e5e5e5",
-          borderRadius: 12,
-          padding: 20,
-          marginBottom: 24,
-        }}
-      >
-        <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16 }}>
-          Create Client
-        </h2>
+      {/* Create client */}
+      <div className="surface p-6">
+        <div className="mb-5 flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-indigo-500/10 text-indigo-300">
+            <Plus className="h-4 w-4" />
+          </div>
+          <h2 className="text-sm font-semibold">New client</h2>
+        </div>
 
         <form onSubmit={handleCreateClient}>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 16,
-              marginBottom: 16,
-            }}
-          >
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div>
-              <label style={{ display: "block", marginBottom: 6 }}>Name</label>
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                Name
+              </label>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Acme Dental"
-                style={{
-                  width: "100%",
-                  padding: 10,
-                  border: "1px solid #ccc",
-                  borderRadius: 8,
-                }}
+                className="input-base"
               />
             </div>
 
             <div>
-              <label style={{ display: "block", marginBottom: 6 }}>Email</label>
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                Email
+              </label>
               <input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="owner@acme.com"
-                style={{
-                  width: "100%",
-                  padding: 10,
-                  border: "1px solid #ccc",
-                  borderRadius: 8,
-                }}
+                className="input-base"
               />
             </div>
 
             <div>
-              <label style={{ display: "block", marginBottom: 6 }}>API Key</label>
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                API Key
+              </label>
               <input
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder="paste client api key"
-                style={{
-                  width: "100%",
-                  padding: 10,
-                  border: "1px solid #ccc",
-                  borderRadius: 8,
-                }}
+                className="input-base font-mono text-xs"
               />
             </div>
 
             <div>
-              <label style={{ display: "block", marginBottom: 6 }}>
-                Retell Agent ID (optional)
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                Retell Agent ID <span className="text-muted-foreground/60">(optional)</span>
               </label>
               <input
                 value={retellAgentId}
                 onChange={(e) => setRetellAgentId(e.target.value)}
                 placeholder="agent_..."
-                style={{
-                  width: "100%",
-                  padding: 10,
-                  border: "1px solid #ccc",
-                  borderRadius: 8,
-                }}
+                className="input-base font-mono text-xs"
               />
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={submitting}
-            style={{
-              border: "1px solid #111",
-              borderRadius: 8,
-              padding: "10px 14px",
-              background: "#111",
-              color: "white",
-              cursor: "pointer",
-            }}
-          >
-            {submitting ? "Creating..." : "Create Client"}
-          </button>
+          <div className="mt-5 flex justify-end">
+            <button type="submit" disabled={submitting} className="btn-primary">
+              <Plus className="h-4 w-4" />
+              {submitting ? "Creating…" : "Create client"}
+            </button>
+          </div>
         </form>
-      </section>
+      </div>
 
-      <section
-        style={{
-          border: "1px solid #e5e5e5",
-          borderRadius: 12,
-          padding: 20,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 16,
-          }}
-        >
-          <h2 style={{ fontSize: 18, fontWeight: 600 }}>Clients</h2>
-
-          <button
-            onClick={loadClients}
-            style={{
-              border: "1px solid #ccc",
-              borderRadius: 8,
-              padding: "8px 12px",
-              background: "white",
-              cursor: "pointer",
-            }}
-          >
-            Refresh
-          </button>
+      {/* Clients list */}
+      <div className="surface mt-5 overflow-hidden">
+        <div className="flex items-center justify-between border-b border-white/5 px-6 py-4">
+          <h2 className="text-sm font-semibold">All clients</h2>
+          <span className="text-xs text-muted-foreground">
+            {clients.length} total
+          </span>
         </div>
 
         {loading ? (
-          <div>Loading clients...</div>
+          <div className="p-10 text-center text-sm text-muted-foreground">
+            Loading clients…
+          </div>
         ) : clients.length === 0 ? (
-          <div>No clients yet.</div>
+          <div className="p-10 text-center">
+            <div className="text-sm font-medium">No clients yet</div>
+            <div className="mt-1 text-sm text-muted-foreground">
+              Create your first client using the form above.
+            </div>
+          </div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <div className="overflow-x-auto">
+            <table className="surface-table">
               <thead>
-                <tr style={{ textAlign: "left", background: "#f8f8f8" }}>
-                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>
-                    Name
-                  </th>
-                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>
-                    Email
-                  </th>
-                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>
-                    API Key
-                  </th>
-                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>
-                    Retell Agent ID
-                  </th>
-                  <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>
-                    Action
-                  </th>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>API Key</th>
+                  <th>Retell Agent</th>
+                  <th className="text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {clients.map((client) => (
                   <tr key={client.id}>
-                    <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
-                      {client.name}
+                    <td>
+                      <div className="font-medium">{client.name}</div>
                     </td>
-                    <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
-                      {client.email}
+                    <td className="text-muted-foreground">{client.email}</td>
+                    <td>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs text-muted-foreground">
+                          {revealedKey === client.id ? client.apiKey : maskKey(client.apiKey)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setRevealedKey((cur) =>
+                              cur === client.id ? null : client.id
+                            )
+                          }
+                          className="text-xs text-muted-foreground hover:text-foreground"
+                          title={revealedKey === client.id ? "Hide" : "Show"}
+                        >
+                          {revealedKey === client.id ? "Hide" : "Show"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(client.apiKey)}
+                          className="text-muted-foreground hover:text-foreground"
+                          title="Copy API key"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </td>
-                    <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
-                      {client.apiKey}
+                    <td>
+                      {client.retellAgentId ? (
+                        <span className="font-mono text-xs text-muted-foreground">
+                          {client.retellAgentId}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </td>
-                    <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
-                      {client.retellAgentId || "—"}
-                    </td>
-                    <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <td>
+                      <div className="flex flex-wrap items-center justify-end gap-2">
                         <Link
                           href={`/admin/clients/${client.id}/calls`}
-                          style={{
-                            display: "inline-block",
-                            border: "1px solid #111",
-                            borderRadius: 8,
-                            padding: "8px 12px",
-                            background: "#111",
-                            color: "white",
-                            textDecoration: "none",
-                          }}
+                          className="btn-secondary"
                         >
-                          View Calls
+                          View calls
                         </Link>
-
                         <Link
                           href={`/admin/clients/${client.id}/edit`}
-                          style={{
-                            display: "inline-block",
-                            border: "1px solid #ccc",
-                            borderRadius: 8,
-                            padding: "8px 12px",
-                            background: "white",
-                            color: "black",
-                            textDecoration: "none",
-                          }}
+                          className="btn-secondary"
                         >
+                          <Pencil className="h-3.5 w-3.5" />
                           Edit
                         </Link>
-
                         <button
                           onClick={() => handleRegenerateApiKey(client.id)}
-                          style={{
-                            border: "1px solid #b45309",
-                            borderRadius: 8,
-                            padding: "8px 12px",
-                            background: "#fff7ed",
-                            color: "#9a3412",
-                            cursor: "pointer",
-                          }}
+                          className="btn-warn"
+                          title="Regenerate API key"
                         >
-                          Regenerate API Key
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          Rotate key
                         </button>
-
                         <button
                           onClick={() => handleDeleteClient(client.id, client.name)}
-                          style={{
-                            border: "1px solid #b91c1c",
-                            borderRadius: 8,
-                            padding: "8px 12px",
-                            background: "#fef2f2",
-                            color: "#991b1b",
-                            cursor: "pointer",
-                          }}
+                          className="btn-danger"
+                          title="Delete client"
                         >
+                          <Trash2 className="h-3.5 w-3.5" />
                           Delete
                         </button>
                       </div>
@@ -522,7 +409,7 @@ export default function AdminPage() {
             </table>
           </div>
         )}
-      </section>
-    </main>
+      </div>
+    </AppShell>
   );
 }

@@ -2,7 +2,19 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
+import {
+  ArrowUpRight,
+  Calendar,
+  CheckCircle2,
+  Info,
+  PhoneCall,
+  RefreshCw,
+  Search,
+} from "lucide-react";
+
+import AppShell from "@/components/layout/AppShell";
+import StatusBadge from "@/components/status-badge";
 
 type CallRecord = {
   id: string;
@@ -26,114 +38,66 @@ type CallRecord = {
 
 const PAGE_SIZE = 10;
 
-function formatStatus(call: CallRecord) {
-  if (call.call_outcome === "booked") return "Booked";
-  if (call.call_outcome === "follow_up") return "Follow Up";
-  if (call.call_outcome === "info_only") return "Info Only";
-  return "Unknown";
-}
-
 function formatDateTime(value: string | null | undefined) {
   if (!value) return "—";
-
   const trimmed = String(value).trim();
-
   if (/^\d+$/.test(trimmed)) {
     const date = new Date(Number(trimmed));
-    if (!Number.isNaN(date.getTime())) {
-      return date.toLocaleString();
-    }
+    if (!Number.isNaN(date.getTime())) return date.toLocaleString();
   }
-
   const date = new Date(trimmed);
-  if (!Number.isNaN(date.getTime())) {
-    return date.toLocaleString();
-  }
-
+  if (!Number.isNaN(date.getTime())) return date.toLocaleString();
   return trimmed;
-}
-
-function formatCreatedAt(value: string) {
-  return formatDateTime(value);
 }
 
 function formatDuration(value: number | null | undefined) {
   if (typeof value !== "number" || Number.isNaN(value) || value < 0) return "—";
-
   const totalSeconds = Math.floor(value / 1000);
-
-  if (totalSeconds < 60) {
-    return `${totalSeconds}s`;
-  }
-
+  if (totalSeconds < 60) return `${totalSeconds}s`;
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
-
   if (minutes < 60) {
     return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
   }
-
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
-
-  if (remainingMinutes > 0) {
-    return `${hours}h ${remainingMinutes}m`;
-  }
-
-  return `${hours}h`;
+  return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
 }
 
-function Sidebar() {
-  const pathname = usePathname();
-
-  function navStyle(href: string): React.CSSProperties {
-    const active = pathname === href;
-    return {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      padding: "10px 12px",
-      borderRadius: 8,
-      textDecoration: "none",
-      color: active ? "black" : "#666",
-      background: active ? "#f3f4f6" : "transparent",
-      fontWeight: active ? 600 : 400,
-      marginBottom: 6,
-    };
-  }
-
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  accent,
+  hint,
+}: {
+  label: string;
+  value: number | string;
+  icon: React.ComponentType<{ className?: string }>;
+  accent: string;
+  hint?: string;
+}) {
   return (
-    <aside
-      style={{
-        width: 240,
-        borderRight: "1px solid #e5e5e5",
-        padding: 20,
-        boxSizing: "border-box",
-      }}
-    >
-      <div style={{ fontSize: 12, textTransform: "uppercase", color: "#777" }}>
-        Console
+    <div className="surface p-5 transition hover:border-white/10">
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            {label}
+          </div>
+          <div className="mt-2 text-3xl font-semibold tracking-tight">
+            {value}
+          </div>
+          {hint ? (
+            <div className="mt-1 text-xs text-muted-foreground">{hint}</div>
+          ) : null}
+        </div>
+        <div
+          className={`flex h-9 w-9 items-center justify-center rounded-lg ${accent}`}
+        >
+          <Icon className="h-4 w-4" />
+        </div>
       </div>
-      <div style={{ fontSize: 22, fontWeight: 700, marginTop: 6, marginBottom: 24 }}>
-        AI Receptionist
-      </div>
-
-      <nav style={{ marginBottom: 24 }}>
-        <Link href="/" style={navStyle("/")}>
-          <span>Dashboard</span>
-          {pathname === "/" ? <span>•</span> : null}
-        </Link>
-
-        <Link href="/calls" style={navStyle("/calls")}>
-          <span>Calls</span>
-          {pathname === "/calls" ? <span>•</span> : null}
-        </Link>
-      </nav>
-
-      <div style={{ fontSize: 12, color: "#777", marginTop: 24 }}>
-        Internal portal
-      </div>
-    </aside>
+    </div>
   );
 }
 
@@ -161,7 +125,6 @@ export default function DashboardPage() {
       }
 
       const text = await res.text();
-
       let data: unknown = [];
       try {
         data = text ? JSON.parse(text) : [];
@@ -171,9 +134,7 @@ export default function DashboardPage() {
 
       if (!res.ok) {
         throw new Error(
-          typeof data === "object" &&
-            data &&
-            "error" in (data as Record<string, unknown>)
+          typeof data === "object" && data && "error" in (data as Record<string, unknown>)
             ? String((data as Record<string, unknown>).error)
             : `API /api/calls failed (${res.status})`
         );
@@ -194,7 +155,6 @@ export default function DashboardPage() {
 
   const filteredCalls = useMemo(() => {
     const q = search.trim().toLowerCase();
-
     return calls.filter((call) => {
       const matchesSearch =
         !q ||
@@ -223,9 +183,7 @@ export default function DashboardPage() {
   }, [search, statusFilter]);
 
   useEffect(() => {
-    if (page > totalPages) {
-      setPage(totalPages);
-    }
+    if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
   const totals = useMemo(() => {
@@ -238,244 +196,161 @@ export default function DashboardPage() {
   }, [calls]);
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
-      <Sidebar />
+    <AppShell
+      variant="client"
+      title="Dashboard"
+      subtitle="Real-time view of your AI receptionist activity."
+      actions={
+        <button onClick={loadCalls} className="btn-secondary">
+          <RefreshCw className="h-4 w-4" />
+          Refresh
+        </button>
+      }
+    >
+      {/* Stat cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Total Calls"
+          value={totals.total}
+          icon={PhoneCall}
+          accent="bg-indigo-500/10 text-indigo-300"
+        />
+        <StatCard
+          label="Booked"
+          value={totals.booked}
+          icon={CheckCircle2}
+          accent="bg-emerald-500/10 text-emerald-300"
+          hint={
+            totals.total
+              ? `${((totals.booked / totals.total) * 100).toFixed(0)}% of calls`
+              : undefined
+          }
+        />
+        <StatCard
+          label="Follow Up"
+          value={totals.followUp}
+          icon={Calendar}
+          accent="bg-amber-500/10 text-amber-300"
+        />
+        <StatCard
+          label="Info Only"
+          value={totals.infoOnly}
+          icon={Info}
+          accent="bg-sky-500/10 text-sky-300"
+        />
+      </div>
 
-      <main style={{ flex: 1, padding: 24 }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            gap: 16,
-            marginBottom: 24,
-          }}
-        >
-          <div>
-            <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 8 }}>
-              Dashboard
-            </h1>
-            <p style={{ color: "#666" }}>
-              View and manage your receptionist call activity.
-            </p>
+      {/* Filters */}
+      <div className="surface mt-8 p-4">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_220px]">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by caller, phone, intent, or summary"
+              className="input-base pl-9"
+            />
           </div>
 
-          <button
-            onClick={loadCalls}
-            style={{
-              border: "1px solid #ccc",
-              borderRadius: 8,
-              padding: "8px 12px",
-              background: "white",
-              cursor: "pointer",
-            }}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="input-base appearance-none"
           >
-            Refresh
-          </button>
+            <option value="all">All statuses</option>
+            <option value="booked">Booked</option>
+            <option value="follow_up">Follow Up</option>
+            <option value="info_only">Info Only</option>
+            <option value="unknown">Unknown</option>
+          </select>
         </div>
+      </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-            gap: 16,
-            marginBottom: 24,
-          }}
-        >
-          <div style={{ border: "1px solid #e5e5e5", borderRadius: 12, padding: 16 }}>
-            <div style={{ color: "#666", marginBottom: 6 }}>Total</div>
-            <div style={{ fontSize: 28, fontWeight: 700 }}>{totals.total}</div>
-          </div>
-          <div style={{ border: "1px solid #e5e5e5", borderRadius: 12, padding: 16 }}>
-            <div style={{ color: "#666", marginBottom: 6 }}>Booked</div>
-            <div style={{ fontSize: 28, fontWeight: 700 }}>{totals.booked}</div>
-          </div>
-          <div style={{ border: "1px solid #e5e5e5", borderRadius: 12, padding: 16 }}>
-            <div style={{ color: "#666", marginBottom: 6 }}>Follow Up</div>
-            <div style={{ fontSize: 28, fontWeight: 700 }}>{totals.followUp}</div>
-          </div>
-          <div style={{ border: "1px solid #e5e5e5", borderRadius: 12, padding: 16 }}>
-            <div style={{ color: "#666", marginBottom: 6 }}>Info Only</div>
-            <div style={{ fontSize: 28, fontWeight: 700 }}>{totals.infoOnly}</div>
-          </div>
-        </div>
-
-        <section
-          style={{
-            border: "1px solid #e5e5e5",
-            borderRadius: 12,
-            padding: 20,
-            marginBottom: 24,
-          }}
-        >
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "2fr 1fr",
-              gap: 16,
-            }}
-          >
-            <div>
-              <label style={{ display: "block", marginBottom: 6 }}>Search</label>
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by caller, phone, intent, or summary"
-                style={{
-                  width: "100%",
-                  padding: 10,
-                  border: "1px solid #ccc",
-                  borderRadius: 8,
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: "block", marginBottom: 6 }}>Status Filter</label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: 10,
-                  border: "1px solid #ccc",
-                  borderRadius: 8,
-                  background: "white",
-                }}
-              >
-                <option value="all">All</option>
-                <option value="booked">Booked</option>
-                <option value="follow_up">Follow Up</option>
-                <option value="info_only">Info Only</option>
-                <option value="unknown">Unknown</option>
-              </select>
-            </div>
-          </div>
-        </section>
-
+      {/* Table */}
+      <div className="mt-4">
         {loading ? (
-          <div>Loading calls...</div>
+          <div className="surface p-10 text-center text-sm text-muted-foreground">
+            Loading calls…
+          </div>
         ) : error ? (
-          <div
-            style={{
-              color: "crimson",
-              border: "1px solid #f2c2c2",
-              borderRadius: 8,
-              padding: 12,
-            }}
-          >
-            Error: {error}
+          <div className="surface border-red-500/20 bg-red-500/5 p-4 text-sm text-red-300">
+            {error}
           </div>
         ) : paginatedCalls.length === 0 ? (
-          <div
-            style={{
-              border: "1px solid #e5e5e5",
-              borderRadius: 12,
-              padding: 16,
-            }}
-          >
-            No calls found for the current search/filter.
+          <div className="surface p-10 text-center">
+            <div className="text-sm font-medium text-foreground">
+              No calls found
+            </div>
+            <div className="mt-1 text-sm text-muted-foreground">
+              Try adjusting your search or filter.
+            </div>
           </div>
         ) : (
           <>
-            <div
-              style={{
-                border: "1px solid #e5e5e5",
-                borderRadius: 12,
-                overflow: "hidden",
-                marginBottom: 16,
-              }}
-            >
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ background: "#f8f8f8", textAlign: "left" }}>
-                    <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Caller</th>
-                    <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Phone</th>
-                    <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Status</th>
-                    <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Duration</th>
-                    <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Created</th>
-                    <th style={{ padding: 12, borderBottom: "1px solid #e5e5e5" }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedCalls.map((call) => (
-                    <tr key={call.id}>
-                      <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
-                        {call.caller_name || "Unknown"}
-                      </td>
-                      <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
-                        {call.caller_phone || "—"}
-                      </td>
-                      <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
-                        {formatStatus(call)}
-                      </td>
-                      <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
-                        {formatDuration(call.duration_ms)}
-                      </td>
-                      <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
-                        {formatCreatedAt(call.createdAt)}
-                      </td>
-                      <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>
-                        <Link
-                          href={`/calls/${call.id}`}
-                          style={{
-                            display: "inline-block",
-                            border: "1px solid #111",
-                            borderRadius: 8,
-                            padding: "8px 12px",
-                            background: "#111",
-                            color: "white",
-                            textDecoration: "none",
-                          }}
-                        >
-                          View
-                        </Link>
-                      </td>
+            <div className="surface overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="surface-table">
+                  <thead>
+                    <tr>
+                      <th>Caller</th>
+                      <th>Phone</th>
+                      <th>Status</th>
+                      <th>Duration</th>
+                      <th>Created</th>
+                      <th className="text-right">Action</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {paginatedCalls.map((call) => (
+                      <tr key={call.id}>
+                        <td className="font-medium">
+                          {call.caller_name || "Unknown"}
+                        </td>
+                        <td className="text-muted-foreground">
+                          {call.caller_phone || "—"}
+                        </td>
+                        <td>
+                          <StatusBadge outcome={call.call_outcome} />
+                        </td>
+                        <td className="text-muted-foreground">
+                          {formatDuration(call.duration_ms)}
+                        </td>
+                        <td className="text-muted-foreground">
+                          {formatDateTime(call.createdAt)}
+                        </td>
+                        <td className="text-right">
+                          <Link
+                            href={`/calls/${call.id}`}
+                            className="btn-secondary inline-flex"
+                          >
+                            View
+                            <ArrowUpRight className="h-3.5 w-3.5" />
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 12,
-              }}
-            >
-              <div style={{ color: "#666" }}>
-                Page {page} of {totalPages}
+            <div className="mt-4 flex items-center justify-between">
+              <div className="text-xs text-muted-foreground">
+                Showing page {page} of {totalPages} · {filteredCalls.length} total
               </div>
-
-              <div style={{ display: "flex", gap: 8 }}>
+              <div className="flex items-center gap-2">
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  style={{
-                    border: "1px solid #ccc",
-                    borderRadius: 8,
-                    padding: "8px 12px",
-                    background: page === 1 ? "#f5f5f5" : "white",
-                    color: page === 1 ? "#999" : "black",
-                    cursor: page === 1 ? "not-allowed" : "pointer",
-                  }}
+                  className="btn-secondary disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Previous
                 </button>
-
                 <button
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
-                  style={{
-                    border: "1px solid #ccc",
-                    borderRadius: 8,
-                    padding: "8px 12px",
-                    background: page === totalPages ? "#f5f5f5" : "white",
-                    color: page === totalPages ? "#999" : "black",
-                    cursor: page === totalPages ? "not-allowed" : "pointer",
-                  }}
+                  className="btn-secondary disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Next
                 </button>
@@ -483,10 +358,7 @@ export default function DashboardPage() {
             </div>
           </>
         )}
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }
-
-
-

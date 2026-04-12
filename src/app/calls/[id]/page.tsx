@@ -2,16 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { ArrowLeft, Save } from "lucide-react";
 
 import AppShell from "@/components/layout/AppShell";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-
-// ✅ IMPORTANT: call the Next.js API route (works on localhost + Vercel)
-const API_BASE = "";
+import StatusBadge from "@/components/status-badge";
 
 type CallOutcome = "booked" | "info_only" | "follow_up" | "unknown";
 
@@ -49,51 +43,107 @@ function normalizeOutcome(
   appointment_booked: boolean | null | undefined
 ): CallOutcome {
   const raw = (call_outcome || "").trim().toLowerCase();
-
   if (raw === "booked") return "booked";
   if (raw === "info_only" || raw === "info only") return "info_only";
   if (raw === "follow_up" || raw === "follow up") return "follow_up";
-
   if (appointment_booked === true) return "booked";
   if (appointment_booked === false) return "info_only";
-
   return "unknown";
 }
 
 function formatDateTime(value: string | null | undefined) {
   if (!value) return "—";
-
   const trimmed = String(value).trim();
-
-  // Handle raw unix timestamps like "1774317868871"
   if (/^\d+$/.test(trimmed)) {
-    const asNumber = Number(trimmed);
-    const date = new Date(asNumber);
-    if (!Number.isNaN(date.getTime())) {
-      return date.toLocaleString();
-    }
+    const date = new Date(Number(trimmed));
+    if (!Number.isNaN(date.getTime())) return date.toLocaleString();
   }
-
   const date = new Date(trimmed);
-  if (!Number.isNaN(date.getTime())) {
-    return date.toLocaleString();
-  }
-
+  if (!Number.isNaN(date.getTime())) return date.toLocaleString();
   return trimmed;
 }
 
 function formatDuration(durationMs: number | null | undefined) {
   if (typeof durationMs !== "number" || Number.isNaN(durationMs)) return "—";
-
   const totalSeconds = Math.round(durationMs / 1000);
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
-
-  if (minutes > 0) {
-    return `${minutes}m ${seconds}s`;
-  }
-
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
   return `${seconds}s`;
+}
+
+function SectionCard({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="surface p-6">
+      <div className="mb-5">
+        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+        {description ? (
+          <p className="mt-1 text-xs text-muted-foreground">{description}</p>
+        ) : null}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+function Toggle({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+}) {
+  return (
+    <label className="flex items-center justify-between rounded-md border border-white/5 bg-white/[0.02] px-3 py-2.5 cursor-pointer transition hover:bg-white/[0.04]">
+      <span className="text-sm text-foreground">{label}</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={[
+          "relative inline-flex h-5 w-9 shrink-0 rounded-full border transition",
+          checked
+            ? "bg-indigo-500 border-indigo-400"
+            : "bg-white/5 border-white/10",
+        ].join(" ")}
+      >
+        <span
+          className={[
+            "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition",
+            checked ? "left-4" : "left-0.5",
+          ].join(" ")}
+        />
+      </button>
+    </label>
+  );
 }
 
 export default function CallDetailsPage() {
@@ -121,28 +171,17 @@ export default function CallDetailsPage() {
     call_successful: false,
   });
 
-  const statusBadge = useMemo(() => {
-    const outcome = normalizeOutcome(
+  const outcomeForBadge = useMemo(() => {
+    return normalizeOutcome(
       call?.call_outcome ?? form.call_outcome,
       call?.appointment_booked ?? form.appointment_booked
     );
-
-    if (outcome === "booked") {
-      return { label: "Booked", variant: "default" as const };
-    }
-    if (outcome === "info_only") {
-      return { label: "Info Only", variant: "secondary" as const };
-    }
-    if (outcome === "follow_up") {
-      return { label: "Follow up", variant: "secondary" as const };
-    }
-    return { label: "Unknown", variant: "secondary" as const };
   }, [call, form.call_outcome, form.appointment_booked]);
 
   async function loadCall() {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/calls/${id}`, { cache: "no-store" });
+      const res = await fetch(`/api/calls/${id}`, { cache: "no-store" });
       if (res.status === 401) {
         router.push("/login");
         return;
@@ -156,10 +195,7 @@ export default function CallDetailsPage() {
       const data: CallRecord = await res.json();
       setCall(data);
 
-      const derivedOutcome = normalizeOutcome(
-        data.call_outcome,
-        data.appointment_booked
-      );
+      const derivedOutcome = normalizeOutcome(data.call_outcome, data.appointment_booked);
 
       setForm({
         caller_name: data.caller_name ?? "",
@@ -199,8 +235,11 @@ export default function CallDetailsPage() {
 
   function toggleAppointmentBooked(checked: boolean) {
     setForm((f) => {
-      const nextOutcome =
-        checked ? "booked" : f.call_outcome === "booked" ? "info_only" : f.call_outcome;
+      const nextOutcome = checked
+        ? "booked"
+        : f.call_outcome === "booked"
+        ? "info_only"
+        : f.call_outcome;
       return { ...f, appointment_booked: checked, call_outcome: nextOutcome };
     });
   }
@@ -208,7 +247,7 @@ export default function CallDetailsPage() {
   async function saveChanges() {
     setSaving(true);
     try {
-      const res = await fetch(`${API_BASE}/api/calls/${id}`, {
+      const res = await fetch(`/api/calls/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -239,7 +278,6 @@ export default function CallDetailsPage() {
       }
 
       await loadCall();
-      alert("Saved ✅");
     } catch (e) {
       console.error(e);
       alert("Save failed. Check backend logs.");
@@ -255,241 +293,230 @@ export default function CallDetailsPage() {
 
   if (loading || !call) {
     return (
-      <AppShell title="Call Details">
-        <Card>
-          <CardHeader>
-            <CardTitle>Loading call…</CardTitle>
-          </CardHeader>
-          <CardContent>Please wait.</CardContent>
-        </Card>
+      <AppShell variant="client" title="Call Details">
+        <div className="surface p-10 text-center text-sm text-muted-foreground">
+          Loading call…
+        </div>
       </AppShell>
     );
   }
 
   return (
-    <AppShell title="Call Details">
-      <div className="space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-sm text-muted-foreground">
-            ID: <span className="font-mono">{call.id}</span>
-          </div>
+    <AppShell
+      variant="client"
+      title="Call Details"
+      subtitle={`ID ${call.id}`}
+      actions={
+        <>
+          <button
+            onClick={() => router.push("/calls")}
+            className="btn-secondary"
+            disabled={saving}
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </button>
+          <button onClick={saveChanges} disabled={saving} className="btn-primary">
+            <Save className="h-4 w-4" />
+            {saving ? "Saving…" : "Save changes"}
+          </button>
+        </>
+      }
+    >
+      <div className="mb-6 flex flex-wrap items-center gap-2">
+        <StatusBadge outcome={outcomeForBadge} />
+        {call.callback_requested ? (
+          <span className="badge">
+            <span className="badge-dot bg-amber-400" />
+            Callback requested
+          </span>
+        ) : null}
+        {call.call_successful ? (
+          <span className="badge">
+            <span className="badge-dot bg-emerald-400" />
+            Successful
+          </span>
+        ) : null}
+      </div>
 
-          <div className="flex items-center gap-2">
-            <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>
-            <Button variant="secondary" onClick={() => router.push("/calls")} disabled={saving}>
-              Back
-            </Button>
-            <Button onClick={saveChanges} disabled={saving}>
-              {saving ? "Saving…" : "Save"}
-            </Button>
-          </div>
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+        {/* Left column: timing + recording */}
+        <div className="space-y-5 lg:col-span-1">
+          <SectionCard title="Call Timing">
+            <div className="space-y-3">
+              <Field label="Started">
+                <input
+                  readOnly
+                  value={formatDateTime(call.start_timestamp)}
+                  className="input-base"
+                />
+              </Field>
+              <Field label="Ended">
+                <input
+                  readOnly
+                  value={formatDateTime(call.end_timestamp)}
+                  className="input-base"
+                />
+              </Field>
+              <Field label="Duration">
+                <input
+                  readOnly
+                  value={formatDuration(call.duration_ms)}
+                  className="input-base"
+                />
+              </Field>
+            </div>
+          </SectionCard>
+
+          {call.recording_url ? (
+            <SectionCard title="Call Recording">
+              <audio controls className="w-full">
+                <source src={call.recording_url} />
+                Your browser does not support audio playback.
+              </audio>
+            </SectionCard>
+          ) : null}
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Call Timing</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div>
-              <label className="text-sm">Started</label>
-              <Input value={formatDateTime(call.start_timestamp)} readOnly />
+        {/* Right column: caller + booking */}
+        <div className="space-y-5 lg:col-span-2">
+          <SectionCard title="Caller">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <Field label="Name">
+                <input
+                  value={form.caller_name}
+                  onChange={(e) => setForm({ ...form, caller_name: e.target.value })}
+                  placeholder="Caller name"
+                  className="input-base"
+                />
+              </Field>
+              <Field label="Phone">
+                <input
+                  value={form.caller_phone}
+                  onChange={(e) => setForm({ ...form, caller_phone: e.target.value })}
+                  placeholder="+1-___-___-____"
+                  className="input-base"
+                />
+              </Field>
+              <Field label="Email">
+                <input
+                  value={form.caller_email}
+                  onChange={(e) => setForm({ ...form, caller_email: e.target.value })}
+                  placeholder="name@company.com"
+                  className="input-base"
+                />
+              </Field>
+            </div>
+          </SectionCard>
+
+          <SectionCard title="Booking & Intent">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <Field label="Intent">
+                <input
+                  value={form.intent}
+                  onChange={(e) => setForm({ ...form, intent: e.target.value })}
+                  placeholder="book_appointment"
+                  className="input-base"
+                />
+              </Field>
+              <Field label="Customer type">
+                <input
+                  value={form.customer_type}
+                  onChange={(e) => setForm({ ...form, customer_type: e.target.value })}
+                  placeholder="new / returning"
+                  className="input-base"
+                />
+              </Field>
+              <Field label="Preferred date">
+                <input
+                  value={form.preferred_date}
+                  onChange={(e) => setForm({ ...form, preferred_date: e.target.value })}
+                  placeholder="YYYY-MM-DD"
+                  className="input-base"
+                />
+              </Field>
+              <Field label="Preferred time">
+                <input
+                  value={form.preferred_time}
+                  onChange={(e) => setForm({ ...form, preferred_time: e.target.value })}
+                  placeholder="3:00 PM"
+                  className="input-base"
+                />
+              </Field>
             </div>
 
-            <div>
-              <label className="text-sm">Ended</label>
-              <Input value={formatDateTime(call.end_timestamp)} readOnly />
-            </div>
+            <div className="mt-5 border-t border-white/5 pt-5">
+              <Field label="Call outcome">
+                <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                  {([
+                    { key: "booked", label: "Booked" },
+                    { key: "info_only", label: "Info Only" },
+                    { key: "follow_up", label: "Follow up" },
+                    { key: "unknown", label: "Unknown" },
+                  ] as const).map((o) => {
+                    const active = form.call_outcome === o.key;
+                    return (
+                      <button
+                        key={o.key}
+                        type="button"
+                        onClick={() => setOutcome(o.key)}
+                        className={[
+                          "rounded-md border px-3 py-2 text-sm font-medium transition",
+                          active
+                            ? "border-indigo-400/50 bg-indigo-500/10 text-indigo-200"
+                            : "border-white/5 bg-white/[0.02] text-muted-foreground hover:text-foreground hover:bg-white/[0.04]",
+                        ].join(" ")}
+                      >
+                        {o.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </Field>
 
-            <div>
-              <label className="text-sm">Duration</label>
-              <Input value={formatDuration(call.duration_ms)} readOnly />
-            </div>
-           
-            {call.recording_url ? (
-              <div className="md:col-span-3">
-                <label className="text-sm">Call Recording</label>
-                <audio controls className="mt-2 w-full">
-                 <source src={call.recording_url} />
-                 Your browser does not support audio playback.
-                </audio>
+              <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-3">
+                <Toggle
+                  label="Appointment booked"
+                  checked={form.appointment_booked}
+                  onChange={toggleAppointmentBooked}
+                />
+                <Toggle
+                  label="Callback requested"
+                  checked={form.callback_requested}
+                  onChange={(v) => setForm({ ...form, callback_requested: v })}
+                />
+                <Toggle
+                  label="Call successful"
+                  checked={form.call_successful}
+                  onChange={(v) => setForm({ ...form, call_successful: v })}
+                />
               </div>
-            ) : null}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Caller</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div>
-              <label className="text-sm">Name</label>
-              <Input
-                value={form.caller_name}
-                onChange={(e) => setForm({ ...form, caller_name: e.target.value })}
-                placeholder="Caller name"
-              />
             </div>
-            <div>
-              <label className="text-sm">Phone</label>
-              <Input
-                value={form.caller_phone}
-                onChange={(e) => setForm({ ...form, caller_phone: e.target.value })}
-                placeholder="+1-___-___-____"
-              />
+          </SectionCard>
+
+          <SectionCard title="Summary & Notes">
+            <div className="space-y-3">
+              <Field label="Summary">
+                <input
+                  value={form.call_summary}
+                  onChange={(e) => setForm({ ...form, call_summary: e.target.value })}
+                  placeholder="Short summary…"
+                  className="input-base"
+                />
+              </Field>
+              <Field label="Notes">
+                <textarea
+                  value={form.notes}
+                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                  placeholder="Notes from the call…"
+                  rows={5}
+                  className="input-base resize-y"
+                />
+              </Field>
             </div>
-            <div>
-              <label className="text-sm">Email</label>
-              <Input
-                value={form.caller_email}
-                onChange={(e) => setForm({ ...form, caller_email: e.target.value })}
-                placeholder="name@company.com"
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Booking / Intent</CardTitle>
-          </CardHeader>
-
-          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div>
-              <label className="text-sm">Intent</label>
-              <Input
-                value={form.intent}
-                onChange={(e) => setForm({ ...form, intent: e.target.value })}
-                placeholder="book_appointment"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm">Customer type</label>
-              <Input
-                value={form.customer_type}
-                onChange={(e) => setForm({ ...form, customer_type: e.target.value })}
-                placeholder="new / returning"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm">Preferred date</label>
-              <Input
-                value={form.preferred_date}
-                onChange={(e) => setForm({ ...form, preferred_date: e.target.value })}
-                placeholder="YYYY-MM-DD"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm">Preferred time</label>
-              <Input
-                value={form.preferred_time}
-                onChange={(e) => setForm({ ...form, preferred_time: e.target.value })}
-                placeholder="3:00 PM"
-              />
-            </div>
-
-            <div className="flex items-center gap-3 pt-6">
-              <label className="text-sm">Appointment booked</label>
-              <input
-                type="checkbox"
-                checked={form.appointment_booked}
-                onChange={(e) => toggleAppointmentBooked(e.target.checked)}
-              />
-            </div>
-
-            <div className="flex items-center gap-3 pt-6">
-              <label className="text-sm">Callback requested</label>
-              <input
-                type="checkbox"
-                checked={form.callback_requested}
-                onChange={(e) => setForm({ ...form, callback_requested: e.target.checked })}
-              />
-            </div>
-
-            <div className="flex items-center gap-3 pt-6">
-              <label className="text-sm">Call successful</label>
-              <input
-                type="checkbox"
-                checked={form.call_successful}
-                onChange={(e) => setForm({ ...form, call_successful: e.target.checked })}
-              />
-            </div>
-          </CardContent>
-
-          <Separator />
-
-          <CardContent className="grid grid-cols-1 gap-3">
-            <div className="flex flex-col gap-2">
-              <label className="text-sm">Call outcome</label>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant={form.call_outcome === "booked" ? "default" : "outline"}
-                  onClick={() => setOutcome("booked")}
-                >
-                  Booked
-                </Button>
-                <Button
-                  type="button"
-                  variant={form.call_outcome === "info_only" ? "default" : "outline"}
-                  onClick={() => setOutcome("info_only")}
-                >
-                  Info Only
-                </Button>
-                <Button
-                  type="button"
-                  variant={form.call_outcome === "follow_up" ? "default" : "outline"}
-                  onClick={() => setOutcome("follow_up")}
-                >
-                  Follow up
-                </Button>
-                <Button
-                  type="button"
-                  variant={form.call_outcome === "unknown" ? "default" : "outline"}
-                  onClick={() => setOutcome("unknown")}
-                >
-                  Unknown
-                </Button>
-              </div>
-
-              <Input
-                value={form.call_outcome}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    call_outcome:
-                      (e.target.value.trim().toLowerCase() as CallOutcome) || "unknown",
-                  })
-                }
-                placeholder="booked / info_only / follow_up"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm">Notes</label>
-              <Input
-                value={form.notes}
-                onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                placeholder="Notes from the call…"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm">Summary</label>
-              <Input
-                value={form.call_summary}
-                onChange={(e) => setForm({ ...form, call_summary: e.target.value })}
-                placeholder="Short summary…"
-              />
-            </div>
-          </CardContent>
-        </Card>
+          </SectionCard>
+        </div>
       </div>
     </AppShell>
   );
 }
-
-
