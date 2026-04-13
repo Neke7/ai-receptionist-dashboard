@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   CreditCard,
   Loader2,
+  MessageSquare,
   Sparkles,
   XCircle,
 } from "lucide-react";
@@ -454,6 +455,69 @@ function BillingPageInner() {
         <p className="mt-6 text-xs text-muted-foreground">
           Payments are securely processed by Stripe. Prices are in USD.
         </p>
+      </section>
+
+      {/* Slack integration */}
+      <section className="mt-10">
+        <div className="surface p-6">
+          <div className="flex items-start gap-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-[#4A154B] to-[#611f69] shadow-lg shadow-purple-900/20">
+              <MessageSquare className="h-4 w-4 text-white" />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-lg font-semibold">Slack notifications</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Get a Slack ping for every new call — with caller info, outcome,
+                and lead temperature — posted straight to your team channel.
+              </p>
+
+              <ol className="mt-4 space-y-2 text-sm text-muted-foreground">
+                <li>
+                  <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-indigo-500/15 text-xs font-medium text-indigo-300">
+                    1
+                  </span>
+                  Create an incoming webhook in your Slack workspace at{" "}
+                  <a
+                    href="https://api.slack.com/messaging/webhooks"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-indigo-300 hover:text-indigo-200 underline-offset-2 hover:underline"
+                  >
+                    api.slack.com/messaging/webhooks
+                  </a>
+                  .
+                </li>
+                <li>
+                  <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-indigo-500/15 text-xs font-medium text-indigo-300">
+                    2
+                  </span>
+                  Pick the channel where Oxphi should post new-call alerts.
+                </li>
+                <li>
+                  <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-indigo-500/15 text-xs font-medium text-indigo-300">
+                    3
+                  </span>
+                  Copy the webhook URL (starts with{" "}
+                  <code className="rounded bg-white/5 px-1 py-0.5 font-mono text-xs">
+                    https://hooks.slack.com/services/…
+                  </code>
+                  ) and send it to your Oxphi admin to attach to your account.
+                </li>
+              </ol>
+
+              <div className="mt-4">
+                <a
+                  href="https://api.slack.com/messaging/webhooks"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-secondary inline-flex"
+                >
+                  Open Slack docs
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
     </AppShell>
   );

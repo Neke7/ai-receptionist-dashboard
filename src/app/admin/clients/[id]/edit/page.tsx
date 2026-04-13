@@ -12,6 +12,7 @@ type ClientRecord = {
   email: string;
   apiKey: string;
   retellAgentId: string | null;
+  slackWebhookUrl: string | null;
   createdAt?: string;
 };
 
@@ -24,6 +25,7 @@ export default function EditClientPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [retellAgentId, setRetellAgentId] = useState("");
+  const [slackWebhookUrl, setSlackWebhookUrl] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -64,6 +66,7 @@ export default function EditClientPage() {
       setName(found.name || "");
       setEmail(found.email || "");
       setRetellAgentId(found.retellAgentId || "");
+      setSlackWebhookUrl(found.slackWebhookUrl || "");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load client");
       setClient(null);
@@ -92,6 +95,7 @@ export default function EditClientPage() {
           name,
           email,
           retellAgentId: retellAgentId.trim() || null,
+          slackWebhookUrl: slackWebhookUrl.trim() || null,
         }),
       });
 
@@ -128,7 +132,7 @@ export default function EditClientPage() {
     <AppShell
       variant="admin"
       title="Edit Client"
-      subtitle="Update the client's name, email, and Retell Agent ID."
+      subtitle="Update the client's name, email, Retell Agent ID, and Slack webhook."
       actions={
         <button onClick={() => router.push("/admin")} className="btn-secondary">
           <ArrowLeft className="h-4 w-4" />
@@ -209,6 +213,31 @@ export default function EditClientPage() {
                     placeholder="agent_..."
                     className="input-base font-mono text-xs"
                   />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                    Slack Webhook URL
+                  </label>
+                  <input
+                    value={slackWebhookUrl}
+                    onChange={(e) => setSlackWebhookUrl(e.target.value)}
+                    placeholder="https://hooks.slack.com/services/..."
+                    className="input-base font-mono text-xs"
+                  />
+                  <p className="mt-1.5 text-[11px] text-muted-foreground">
+                    New calls will post to this Slack channel. Leave blank to
+                    disable. Create a webhook at{" "}
+                    <a
+                      href="https://api.slack.com/messaging/webhooks"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-indigo-300 hover:text-indigo-200 underline-offset-2 hover:underline"
+                    >
+                      api.slack.com/messaging/webhooks
+                    </a>
+                    .
+                  </p>
                 </div>
               </div>
 
