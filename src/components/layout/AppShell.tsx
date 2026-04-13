@@ -111,7 +111,7 @@ export default function AppShell({
             </div>
             <div className="flex flex-col leading-tight">
               <span className="text-sm font-semibold text-foreground">
-                Callio
+                Oxphi
               </span>
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
                 {variant === "admin" ? "Admin Console" : "Client Portal"}

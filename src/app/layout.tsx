@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Callio",
-  description: "Dashboard for Callio calls and clients",
+  title: "Oxphi",
+  description: "Dashboard for Oxphi calls and clients",
 };
 
 export default function RootLayout({

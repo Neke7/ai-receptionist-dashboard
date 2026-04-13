@@ -199,7 +199,7 @@ export default function DashboardPage() {
     <AppShell
       variant="client"
       title="Dashboard"
-      subtitle="Real-time view of your Callio activity."
+      subtitle="Real-time view of your Oxphi activity."
       actions={
         <button onClick={loadCalls} className="btn-secondary">
           <RefreshCw className="h-4 w-4" />
