@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const CLIENT_PROTECTED_ROUTES = ["/", "/calls", "/billing"];
+// "/" is NOT protected — the root route renders the public landing page for
+// anonymous visitors and the dashboard for signed-in users (see src/app/page.tsx).
+const CLIENT_PROTECTED_ROUTES = ["/calls", "/billing"];
 const ADMIN_BASE_ROUTE = "/admin";
 const ADMIN_LOGIN_ROUTE = "/admin/login";
 const CLIENT_LOGIN_ROUTE = "/login";
