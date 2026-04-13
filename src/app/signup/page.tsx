@@ -114,7 +114,7 @@ export default function SignupPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             {created
               ? "Save your API key somewhere safe — it won't be shown again."
-              : "Sign up to start handling calls with your AI receptionist."}
+              : "Sign up to start handling calls with Callio."}
           </p>
         </div>
 

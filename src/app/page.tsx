@@ -199,7 +199,7 @@ export default function DashboardPage() {
     <AppShell
       variant="client"
       title="Dashboard"
-      subtitle="Real-time view of your AI receptionist activity."
+      subtitle="Real-time view of your Callio activity."
       actions={
         <button onClick={loadCalls} className="btn-secondary">
           <RefreshCw className="h-4 w-4" />

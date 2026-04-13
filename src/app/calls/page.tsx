@@ -184,7 +184,7 @@ export default function CallsPage() {
     <AppShell
       variant="client"
       title="All Calls"
-      subtitle="Search, filter, and review every receptionist call."
+      subtitle="Search, filter, and review every Callio call."
       actions={
         <>
           <button
