@@ -227,7 +227,7 @@ function Hero() {
         </div>
 
         <h1 className="max-w-4xl text-balance text-4xl font-semibold tracking-tight text-foreground sm:text-5xl md:text-6xl lg:text-7xl">
-          Your AI Receptionist,{" "}
+          Your Front Desk,{" "}
           <span className="bg-gradient-to-r from-indigo-300 via-indigo-400 to-sky-300 bg-clip-text text-transparent">
             Always On
           </span>
@@ -557,8 +557,9 @@ function Footer() {
             <span className="text-base font-semibold tracking-tight">Oxphi</span>
           </Link>
           <p className="mt-3 text-sm text-muted-foreground">
-            The AI receptionist that answers every call, books the appointment,
-            and scores the lead — so your team focuses on the work that matters.
+            The always-on front desk that answers every call, books the
+            appointment, and scores the lead — so your team can focus on the
+            work that matters.
           </p>
         </div>
 
