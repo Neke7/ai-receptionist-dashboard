@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const CLIENT_PROTECTED_ROUTES = ["/", "/calls"];
+const CLIENT_PROTECTED_ROUTES = ["/", "/calls", "/billing"];
 const ADMIN_BASE_ROUTE = "/admin";
 const ADMIN_LOGIN_ROUTE = "/admin/login";
 const CLIENT_LOGIN_ROUTE = "/login";
@@ -46,5 +46,5 @@ export function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/calls/:path*", "/admin/:path*"],
+  matcher: ["/", "/calls/:path*", "/billing/:path*", "/admin/:path*"],
 };

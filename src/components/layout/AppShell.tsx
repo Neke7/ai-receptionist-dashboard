@@ -8,6 +8,7 @@ import {
   PhoneCall,
   Users,
   BarChart3,
+  CreditCard,
   LogOut,
   Sparkles,
 } from "lucide-react";
@@ -31,6 +32,7 @@ type NavItem = {
 const CLIENT_NAV: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/calls", label: "Calls", icon: PhoneCall },
+  { href: "/billing", label: "Billing", icon: CreditCard },
 ];
 
 const ADMIN_NAV: NavItem[] = [
