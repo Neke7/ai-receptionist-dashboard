@@ -7,6 +7,7 @@ import { ArrowUpRight, Download, RefreshCw, Search } from "lucide-react";
 
 import AppShell from "@/components/layout/AppShell";
 import StatusBadge from "@/components/status-badge";
+import { LeadTemperatureBadge } from "@/components/lead-temperature";
 import {
   downloadCsv,
   formatBoolForCsv,
@@ -34,6 +35,8 @@ type CallRecord = {
   call_outcome: string | null;
   call_summary: string | null;
   call_successful: boolean | null;
+  leadScore: number | null;
+  leadTemperature: "hot" | "warm" | "cold" | null;
 };
 
 const PAGE_SIZE = 10;
@@ -257,6 +260,7 @@ export default function CallsPage() {
                       <th>Caller</th>
                       <th>Phone</th>
                       <th>Status</th>
+                      <th>Lead</th>
                       <th>Duration</th>
                       <th>Created</th>
                       <th className="text-right">Action</th>
@@ -273,6 +277,12 @@ export default function CallsPage() {
                         </td>
                         <td>
                           <StatusBadge outcome={call.call_outcome} />
+                        </td>
+                        <td>
+                          <LeadTemperatureBadge
+                            temperature={call.leadTemperature}
+                            score={call.leadScore}
+                          />
                         </td>
                         <td className="text-muted-foreground">
                           {formatDuration(call.duration_ms)}

@@ -5,6 +5,7 @@ import {
   BarChart3,
   Building2,
   CheckCircle2,
+  Flame,
   PhoneCall,
   RefreshCw,
   RotateCcw,
@@ -23,6 +24,15 @@ type DayVolume = {
   count: number;
 };
 
+type LeadScoreBreakdown = {
+  clientId: string;
+  clientName: string;
+  hot: number;
+  warm: number;
+  cold: number;
+  unscored: number;
+};
+
 type AnalyticsData = {
   totalCalls: number;
   bookedCount: number;
@@ -31,6 +41,7 @@ type AnalyticsData = {
   followUpRate: number;
   callsPerClient: ClientCallCount[];
   callVolumeOverTime: DayVolume[];
+  leadScoreByClient?: LeadScoreBreakdown[];
 };
 
 function formatPercent(rate: number): string {
@@ -268,6 +279,112 @@ export default function AdminAnalyticsPage() {
             </div>
 
             <VolumeChart data={data.callVolumeOverTime} />
+          </div>
+
+          {/* Lead score breakdown per client */}
+          <div className="surface mt-6 overflow-hidden">
+            <div className="flex items-start justify-between border-b border-white/5 px-6 py-4">
+              <div>
+                <h2 className="text-sm font-semibold">Lead Score Breakdown</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Hot, warm, and cold leads by client
+                </p>
+              </div>
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-orange-500/10 text-orange-300">
+                <Flame className="h-4 w-4" />
+              </div>
+            </div>
+
+            {!data.leadScoreByClient || data.leadScoreByClient.length === 0 ? (
+              <div className="p-10 text-center text-sm text-muted-foreground">
+                No scored leads yet.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="surface-table">
+                  <thead>
+                    <tr>
+                      <th>Client</th>
+                      <th>
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="h-1.5 w-1.5 rounded-full bg-orange-400" />
+                          Hot
+                        </span>
+                      </th>
+                      <th>
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="h-1.5 w-1.5 rounded-full bg-yellow-400" />
+                          Warm
+                        </span>
+                      </th>
+                      <th>
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
+                          Cold
+                        </span>
+                      </th>
+                      <th>Unscored</th>
+                      <th className="w-[35%]">Mix</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...data.leadScoreByClient]
+                      .sort(
+                        (a, b) =>
+                          b.hot + b.warm + b.cold + b.unscored -
+                          (a.hot + a.warm + a.cold + a.unscored)
+                      )
+                      .map((row) => {
+                        const total =
+                          row.hot + row.warm + row.cold + row.unscored;
+                        const pct = (n: number) =>
+                          total > 0 ? (n / total) * 100 : 0;
+                        return (
+                          <tr key={row.clientId}>
+                            <td className="font-medium">{row.clientName}</td>
+                            <td className="text-orange-300 tabular-nums">
+                              {row.hot}
+                            </td>
+                            <td className="text-yellow-300 tabular-nums">
+                              {row.warm}
+                            </td>
+                            <td className="text-sky-300 tabular-nums">
+                              {row.cold}
+                            </td>
+                            <td className="text-muted-foreground tabular-nums">
+                              {row.unscored}
+                            </td>
+                            <td>
+                              <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-white/5">
+                                <div
+                                  className="h-full bg-gradient-to-r from-orange-500 to-red-500"
+                                  style={{ width: `${pct(row.hot)}%` }}
+                                  title={`Hot: ${row.hot}`}
+                                />
+                                <div
+                                  className="h-full bg-gradient-to-r from-amber-400 to-yellow-400"
+                                  style={{ width: `${pct(row.warm)}%` }}
+                                  title={`Warm: ${row.warm}`}
+                                />
+                                <div
+                                  className="h-full bg-gradient-to-r from-sky-500 to-blue-500"
+                                  style={{ width: `${pct(row.cold)}%` }}
+                                  title={`Cold: ${row.cold}`}
+                                />
+                                <div
+                                  className="h-full bg-white/10"
+                                  style={{ width: `${pct(row.unscored)}%` }}
+                                  title={`Unscored: ${row.unscored}`}
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           {/* Calls per client */}

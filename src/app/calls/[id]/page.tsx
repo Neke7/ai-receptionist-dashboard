@@ -6,6 +6,7 @@ import { ArrowLeft, Save } from "lucide-react";
 
 import AppShell from "@/components/layout/AppShell";
 import StatusBadge from "@/components/status-badge";
+import { LeadScoreMeter } from "@/components/lead-temperature";
 
 type CallOutcome = "booked" | "info_only" | "follow_up" | "unknown";
 
@@ -36,6 +37,9 @@ type CallRecord = {
   end_timestamp: string | null;
   duration_ms: number | null;
   recording_url: string | null;
+
+  leadScore: number | null;
+  leadTemperature: "hot" | "warm" | "cold" | null;
 };
 
 function normalizeOutcome(
@@ -340,8 +344,18 @@ export default function CallDetailsPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        {/* Left column: timing + recording */}
+        {/* Left column: lead score + timing + recording */}
         <div className="space-y-5 lg:col-span-1">
+          <SectionCard
+            title="Lead Score"
+            description="Automated score based on call outcome, contact info, and scheduling signals."
+          >
+            <LeadScoreMeter
+              score={call.leadScore}
+              temperature={call.leadTemperature}
+            />
+          </SectionCard>
+
           <SectionCard title="Call Timing">
             <div className="space-y-3">
               <Field label="Started">
