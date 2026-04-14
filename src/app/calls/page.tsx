@@ -73,6 +73,7 @@ export default function CallsPage() {
   const [calls, setCalls] = useState<CallRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [businessName, setBusinessName] = useState("");
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -116,6 +117,26 @@ export default function CallsPage() {
 
   useEffect(() => {
     loadCalls();
+  }, []);
+
+  // Pull the business name so the CSV export filename can include it.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/auth/me", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && data && typeof data.name === "string") {
+          setBusinessName(data.name);
+        }
+      } catch {
+        // Filename will fall back to "calls-YYYY-MM-DD.csv".
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const filteredCalls = useMemo(() => {
@@ -180,7 +201,9 @@ export default function CallsPage() {
 
     const csv = toCsv(headers, rows);
     const stamp = new Date().toISOString().slice(0, 10);
-    downloadCsv(`calls-${stamp}.csv`, csv);
+    const slug = businessName.replace(/[^A-Za-z0-9]+/g, "");
+    const prefix = slug ? `${slug}-` : "";
+    downloadCsv(`${prefix}calls-${stamp}.csv`, csv);
   }
 
   return (

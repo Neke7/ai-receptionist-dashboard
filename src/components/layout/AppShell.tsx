@@ -75,7 +75,18 @@ function NavLink({
   );
 }
 
-function BrandMark({ variant }: { variant: ShellVariant }) {
+function BrandMark({
+  variant,
+  clientName,
+}: {
+  variant: ShellVariant;
+  clientName?: string;
+}) {
+  const subtitle =
+    variant === "admin"
+      ? "Admin Console"
+      : clientName?.trim() || "Client Portal";
+
   return (
     <Link
       href={variant === "admin" ? "/admin" : "/"}
@@ -84,10 +95,18 @@ function BrandMark({ variant }: { variant: ShellVariant }) {
       <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-lg shadow-indigo-500/20">
         <Sparkles className="h-4 w-4 text-white" />
       </div>
-      <div className="flex flex-col leading-tight">
+      <div className="flex min-w-0 flex-col leading-tight">
         <span className="text-sm font-semibold text-foreground">Oxphi</span>
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-          {variant === "admin" ? "Admin Console" : "Client Portal"}
+        <span
+          className={[
+            "max-w-[160px] truncate text-[11px] tracking-wide text-muted-foreground",
+            variant === "client" && clientName?.trim()
+              ? "font-medium normal-case text-foreground/90"
+              : "uppercase",
+          ].join(" ")}
+          title={subtitle}
+        >
+          {subtitle}
         </span>
       </div>
     </Link>
@@ -106,6 +125,29 @@ export default function AppShell({
   const nav = variant === "admin" ? ADMIN_NAV : CLIENT_NAV;
 
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [clientName, setClientName] = useState<string | undefined>(undefined);
+
+  // Fetch the logged-in client's business name so the sidebar can show it
+  // under the Oxphi logo. Admin shell skips this since it's not client-scoped.
+  useEffect(() => {
+    if (variant !== "client") return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/auth/me", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && data && typeof data.name === "string") {
+          setClientName(data.name);
+        }
+      } catch {
+        // Silent fallback to "Client Portal".
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [variant]);
 
   // Close the mobile drawer on route change and lock body scroll while open.
   useEffect(() => {
@@ -149,7 +191,7 @@ export default function AppShell({
       {/* Desktop sidebar */}
       <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-white/5 bg-[var(--sidebar)]">
         <div className="px-5 pt-6 pb-4">
-          <BrandMark variant={variant} />
+          <BrandMark variant={variant} clientName={clientName} />
         </div>
 
         <div className="px-3 py-2">
@@ -176,7 +218,7 @@ export default function AppShell({
 
       {/* Mobile top bar */}
       <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between border-b border-white/5 bg-[#0a0b10]/90 px-4 backdrop-blur-md md:hidden">
-        <BrandMark variant={variant} />
+        <BrandMark variant={variant} clientName={clientName} />
         <button
           type="button"
           onClick={() => setMobileNavOpen(true)}
@@ -198,7 +240,7 @@ export default function AppShell({
           />
           <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col border-r border-white/5 bg-[var(--sidebar)] shadow-2xl">
             <div className="flex items-center justify-between px-5 pt-6 pb-4">
-              <BrandMark variant={variant} />
+              <BrandMark variant={variant} clientName={clientName} />
               <button
                 type="button"
                 onClick={() => setMobileNavOpen(false)}
