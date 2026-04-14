@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Copy,
   Pencil,
@@ -29,6 +30,7 @@ function maskKey(key: string): string {
 }
 
 export default function AdminPage() {
+  const router = useRouter();
   const [clients, setClients] = useState<ClientRecord[]>([]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -329,12 +331,27 @@ export default function AdminPage() {
               </thead>
               <tbody>
                 {clients.map((client) => (
-                  <tr key={client.id}>
+                  <tr
+                    key={client.id}
+                    onClick={() =>
+                      router.push(`/admin/calls?clientId=${client.id}`)
+                    }
+                    role="link"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        router.push(`/admin/calls?clientId=${client.id}`);
+                      }
+                    }}
+                    title={`View calls for ${client.name}`}
+                    className="cursor-pointer transition hover:bg-white/[0.02]"
+                  >
                     <td>
                       <div className="font-medium">{client.name}</div>
                     </td>
                     <td className="text-muted-foreground">{client.email}</td>
-                    <td>
+                    <td onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-xs text-muted-foreground">
                           {revealedKey === client.id ? client.apiKey : maskKey(client.apiKey)}
@@ -370,7 +387,7 @@ export default function AdminPage() {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </td>
-                    <td>
+                    <td onClick={(e) => e.stopPropagation()}>
                       <div className="flex flex-wrap items-center justify-end gap-2">
                         <Link
                           href={`/admin/clients/${client.id}/calls`}
