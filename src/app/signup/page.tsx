@@ -156,6 +156,14 @@ export default function SignupPage() {
               </div>
             </div>
 
+            <div className="mt-3 flex items-center gap-2 rounded-md border border-indigo-500/20 bg-indigo-500/5 px-3 py-2 text-xs text-indigo-300">
+              <Mail className="h-3.5 w-3.5 shrink-0" />
+              <span>
+                A welcome email with your API key has been sent to{" "}
+                <span className="font-medium text-indigo-200">{created.email}</span>
+              </span>
+            </div>
+
             <div className="mt-5 space-y-3 border-t border-white/5 pt-5">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
