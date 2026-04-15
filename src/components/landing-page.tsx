@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -350,7 +351,9 @@ function Features() {
   );
 }
 
-function Pricing() {
+function Pricing({ loggedIn }: { loggedIn: boolean }) {
+  const planHref = (id: Tier["id"]) =>
+    loggedIn ? `/billing?checkout=${id}` : `/signup?plan=${id}`;
   return (
     <section id="pricing" className="relative border-t border-white/5">
       <div className="mx-auto w-full max-w-7xl px-4 py-20 md:px-8 md:py-28">
@@ -406,7 +409,7 @@ function Pricing() {
 
               <div className="mt-8 pt-6 border-t border-white/5">
                 <Link
-                  href="/signup"
+                  href={planHref(tier.id)}
                   className={[
                     "inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition",
                     tier.featured
@@ -654,13 +657,19 @@ function Footer() {
   );
 }
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  // The login cookie is httpOnly, so we inspect it server-side to decide
+  // whether pricing CTAs should route to /signup (anonymous) or straight to
+  // Stripe checkout via /billing (already authenticated).
+  const cookieStore = await cookies();
+  const loggedIn = Boolean(cookieStore.get("client_api_key")?.value?.trim());
+
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-[#0a0b10] text-foreground">
       <NavBar />
       <Hero />
       <Features />
-      <Pricing />
+      <Pricing loggedIn={loggedIn} />
       <Testimonials />
       <FAQ />
       <FinalCTA />

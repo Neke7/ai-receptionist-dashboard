@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Building2,
   Check,
@@ -23,8 +23,34 @@ type CreatedClient = {
   createdAt?: string;
 };
 
+type PlanId = "starter" | "pro" | "enterprise";
+
+const VALID_PLANS: readonly PlanId[] = ["starter", "pro", "enterprise"] as const;
+
+const PLAN_LABELS: Record<PlanId, string> = {
+  starter: "Starter",
+  pro: "Pro",
+  enterprise: "Enterprise",
+};
+
 export default function SignupPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignupPageInner />
+    </Suspense>
+  );
+}
+
+function SignupPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const selectedPlan = useMemo<PlanId | null>(() => {
+    const raw = (searchParams.get("plan") || "").toLowerCase();
+    return (VALID_PLANS as readonly string[]).includes(raw)
+      ? (raw as PlanId)
+      : null;
+  }, [searchParams]);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -35,6 +61,45 @@ export default function SignupPage() {
   const [error, setError] = useState("");
   const [created, setCreated] = useState<CreatedClient | null>(null);
   const [copied, setCopied] = useState(false);
+  const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
+
+  // Once signup succeeds with a selected plan, auto-login the new client and
+  // kick off a 3-second countdown to /billing?checkout=<plan>. The billing
+  // page then auto-launches Stripe checkout for that plan.
+  useEffect(() => {
+    if (!created || !selectedPlan) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ apiKey: created.apiKey }),
+        });
+      } catch (err) {
+        console.error("Auto-login after signup failed:", err);
+      }
+
+      if (cancelled) return;
+      setRedirectCountdown(3);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [created, selectedPlan]);
+
+  useEffect(() => {
+    if (redirectCountdown === null) return;
+    if (redirectCountdown <= 0) {
+      router.push(`/billing?checkout=${selectedPlan}`);
+      return;
+    }
+    const t = setTimeout(() => setRedirectCountdown((n) => (n ?? 1) - 1), 1000);
+    return () => clearTimeout(t);
+  }, [redirectCountdown, router, selectedPlan]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -191,13 +256,30 @@ export default function SignupPage() {
               ) : null}
             </div>
 
-            <button
-              type="button"
-              onClick={() => router.push("/login")}
-              className="btn-primary mt-6 w-full"
-            >
-              Go to login
-            </button>
+            {selectedPlan ? (
+              <div className="mt-6 rounded-md border border-indigo-500/30 bg-indigo-500/[0.07] px-4 py-3 text-center text-sm text-indigo-200">
+                <div className="flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-indigo-300" />
+                  <span className="font-medium">
+                    Redirecting you to complete your setup…
+                  </span>
+                </div>
+                <div className="mt-1 text-xs text-indigo-300/80">
+                  Setting up your {PLAN_LABELS[selectedPlan]} plan
+                  {redirectCountdown !== null
+                    ? ` in ${redirectCountdown}s`
+                    : "…"}
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => router.push("/login")}
+                className="btn-primary mt-6 w-full"
+              >
+                Go to login
+              </button>
+            )}
           </div>
         ) : (
           /* Signup form */

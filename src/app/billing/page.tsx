@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   CheckCircle2,
@@ -287,6 +287,27 @@ function BillingPageInner() {
   useEffect(() => {
     loadSubscription();
   }, []);
+
+  // If the URL was /billing?checkout=starter|pro|enterprise (from the landing
+  // page CTAs or the post-signup auto-redirect), jump the user straight into
+  // Stripe checkout once the subscription has loaded. Guarded by a ref so it
+  // only fires once per mount and skipped when the user is already on that
+  // plan.
+  const autoCheckoutFired = useRef(false);
+  useEffect(() => {
+    if (autoCheckoutFired.current) return;
+    if (loading) return;
+
+    const checkout = (params.get("checkout") || "").toLowerCase();
+    const VALID = ["starter", "pro", "enterprise"] as const;
+    if (!(VALID as readonly string[]).includes(checkout)) return;
+
+    const plan = checkout as PlanId;
+    if (sub?.planId === plan && sub?.status === "active") return;
+
+    autoCheckoutFired.current = true;
+    startCheckout(plan);
+  }, [loading, params, sub]);
 
   async function startCheckout(plan: PlanId) {
     setCheckoutLoading(plan);
