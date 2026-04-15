@@ -15,6 +15,9 @@ import {
   X,
 } from "lucide-react";
 
+import TrialBanner from "@/components/trial-banner";
+import { useTrial } from "@/hooks/use-trial";
+
 export type ShellVariant = "client" | "admin";
 
 interface AppShellProps {
@@ -125,29 +128,27 @@ export default function AppShell({
   const nav = variant === "admin" ? ADMIN_NAV : CLIENT_NAV;
 
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [clientName, setClientName] = useState<string | undefined>(undefined);
 
-  // Fetch the logged-in client's business name so the sidebar can show it
-  // under the Oxphi logo. Admin shell skips this since it's not client-scoped.
+  // Pull account + trial info once per page mount. /api/auth/me returns both
+  // the business name (used in the sidebar) and trial status (drives the
+  // banner + expired-trial redirect below). Admin shell skips it entirely.
+  const { info: trialInfo } = useTrial();
+  const clientName =
+    variant === "client" ? trialInfo?.name : undefined;
+
+  // If the client's trial has ended and they haven't subscribed, force them
+  // onto /trial-expired. Keep /billing reachable so they can still pay, and
+  // obviously don't redirect the trial-expired page onto itself.
   useEffect(() => {
     if (variant !== "client") return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/auth/me", { cache: "no-store" });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!cancelled && data && typeof data.name === "string") {
-          setClientName(data.name);
-        }
-      } catch {
-        // Silent fallback to "Client Portal".
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [variant]);
+    if (!trialInfo) return;
+    const status = (trialInfo.subscriptionStatus || "").toLowerCase();
+    if (status === "active") return;
+    if (!trialInfo.trialExpired) return;
+    if (pathname === "/trial-expired") return;
+    if (pathname === "/billing" || pathname.startsWith("/billing/")) return;
+    router.replace("/trial-expired");
+  }, [variant, trialInfo, pathname, router]);
 
   // Close the mobile drawer on route change and lock body scroll while open.
   useEffect(() => {
@@ -286,6 +287,10 @@ export default function AppShell({
       {/* Main */}
       <main className="flex-1 min-w-0 pt-14 md:pt-0">
         <div className="mx-auto w-full max-w-7xl px-4 md:px-8 py-6 md:py-10">
+          {variant === "client" && pathname !== "/trial-expired" ? (
+            <TrialBanner info={trialInfo} />
+          ) : null}
+
           {(title || actions) && (
             <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">

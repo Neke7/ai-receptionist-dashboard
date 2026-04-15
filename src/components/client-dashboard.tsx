@@ -124,6 +124,11 @@ export default function ClientDashboard() {
         return;
       }
 
+      if (res.status === 403) {
+        router.replace("/trial-expired");
+        return;
+      }
+
       const text = await res.text();
       let data: unknown = [];
       try {

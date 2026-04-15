@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   CheckCircle2,
+  Clock,
   CreditCard,
   Loader2,
   MessageSquare,
@@ -12,6 +13,9 @@ import {
 } from "lucide-react";
 
 import AppShell from "@/components/layout/AppShell";
+import { useTrial } from "@/hooks/use-trial";
+
+const TRIAL_DAYS = 14;
 
 type PlanId = "starter" | "pro" | "enterprise";
 
@@ -144,9 +148,79 @@ export default function BillingPage() {
   );
 }
 
+function TrialCountdownCard({
+  trialEndsAt,
+}: {
+  trialEndsAt: string | null | undefined;
+}) {
+  if (!trialEndsAt) return null;
+
+  const end = new Date(trialEndsAt).getTime();
+  if (Number.isNaN(end)) return null;
+
+  const daysRemaining = Math.max(
+    0,
+    Math.ceil((end - Date.now()) / (24 * 60 * 60 * 1000))
+  );
+  const daysUsed = Math.min(TRIAL_DAYS, Math.max(0, TRIAL_DAYS - daysRemaining));
+  const remainingPct = Math.max(0, Math.min(100, (daysRemaining / TRIAL_DAYS) * 100));
+
+  const accent =
+    daysRemaining >= 7
+      ? {
+          text: "text-emerald-300",
+          bar: "bg-gradient-to-r from-emerald-400 to-emerald-500",
+        }
+      : daysRemaining >= 3
+        ? {
+            text: "text-amber-300",
+            bar: "bg-gradient-to-r from-amber-400 to-amber-500",
+          }
+        : {
+            text: "text-red-300",
+            bar: "bg-gradient-to-r from-red-400 to-red-500",
+          };
+
+  return (
+    <section className="surface mb-6 p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-indigo-500/10">
+              <Clock className={`h-4 w-4 ${accent.text}`} />
+            </div>
+            <h2 className="text-lg font-semibold">Free trial</h2>
+          </div>
+          <div className="mt-3 flex flex-wrap items-baseline gap-2">
+            <span className="text-2xl font-semibold tracking-tight">
+              {daysRemaining} day{daysRemaining === 1 ? "" : "s"} left
+            </span>
+            <span className="text-sm text-muted-foreground">
+              · Day {daysUsed} of {TRIAL_DAYS}
+            </span>
+          </div>
+          <div className="mt-1 text-sm text-muted-foreground">
+            Pick a plan below to keep your receptionist running once the trial
+            ends.
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/[0.04]">
+        <div
+          className={`h-full rounded-full transition-all ${accent.bar}`}
+          style={{ width: `${remainingPct}%` }}
+        />
+      </div>
+    </section>
+  );
+}
+
 function BillingPageInner() {
   const router = useRouter();
   const params = useSearchParams();
+
+  const { info: trialInfo } = useTrial();
 
   const [sub, setSub] = useState<SubscriptionResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -309,6 +383,12 @@ function BillingPageInner() {
         <div className="mb-6 rounded-md border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-200">
           {error}
         </div>
+      ) : null}
+
+      {trialInfo &&
+      (trialInfo.subscriptionStatus || "").toLowerCase() !== "active" &&
+      !trialInfo.trialExpired ? (
+        <TrialCountdownCard trialEndsAt={trialInfo.trialEndsAt} />
       ) : null}
 
       {/* Current plan */}

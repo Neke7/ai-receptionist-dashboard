@@ -190,6 +190,10 @@ export default function CallDetailsPage() {
         router.push("/login");
         return;
       }
+      if (res.status === 403) {
+        router.replace("/trial-expired");
+        return;
+      }
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");

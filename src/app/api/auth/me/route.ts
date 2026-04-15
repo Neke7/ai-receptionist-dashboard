@@ -15,7 +15,7 @@ export async function GET() {
       return NextResponse.json({ error: "Not logged in" }, { status: 401 });
     }
 
-    const res = await fetch(`${BACKEND}/api/me`, {
+    const res = await fetch(`${BACKEND}/api/auth/me`, {
       cache: "no-store",
       headers: { "x-api-key": apiKey },
     });
