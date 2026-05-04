@@ -285,8 +285,8 @@ export default function AppShell({
       ) : null}
 
       {/* Main */}
-      <main className="flex-1 min-w-0 pt-14 md:pt-0">
-        <div className="mx-auto w-full max-w-7xl px-4 md:px-8 py-6 md:py-10">
+      <main className="flex-1 min-w-0 pt-14 md:pt-0 flex flex-col">
+        <div className="mx-auto w-full max-w-7xl px-4 md:px-8 py-6 md:py-10 flex-1">
           {variant === "client" && pathname !== "/trial-expired" ? (
             <TrialBanner info={trialInfo} />
           ) : null}
@@ -313,6 +313,26 @@ export default function AppShell({
 
           {children}
         </div>
+
+        <footer className="border-t border-white/5">
+          <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-5 text-xs text-muted-foreground md:flex-row md:items-center md:justify-between md:px-8">
+            <div>© {new Date().getFullYear()} Oxphi. All rights reserved.</div>
+            <div className="flex flex-wrap items-center gap-4">
+              <Link href="/terms" className="transition hover:text-foreground">
+                Terms of Service
+              </Link>
+              <Link href="/privacy" className="transition hover:text-foreground">
+                Privacy Policy
+              </Link>
+              <a
+                href="mailto:support@oxphi.com"
+                className="transition hover:text-foreground"
+              >
+                Contact
+              </a>
+            </div>
+          </div>
+        </footer>
       </main>
     </div>
   );

@@ -566,7 +566,7 @@ function Footer() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 md:min-w-[420px]">
+        <div className="grid grid-cols-2 gap-8 sm:grid-cols-4 md:min-w-[560px]">
           <div>
             <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Product
@@ -636,7 +636,7 @@ function Footer() {
               </li>
               <li>
                 <a
-                  href="mailto:hello@oxphi.ai"
+                  href="mailto:support@oxphi.com"
                   className="text-muted-foreground transition hover:text-foreground"
                 >
                   Contact
@@ -644,13 +644,49 @@ function Footer() {
               </li>
             </ul>
           </div>
+          <div>
+            <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Legal
+            </div>
+            <ul className="mt-3 space-y-2 text-sm">
+              <li>
+                <Link
+                  href="/terms"
+                  className="text-muted-foreground transition hover:text-foreground"
+                >
+                  Terms of Service
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/privacy"
+                  className="text-muted-foreground transition hover:text-foreground"
+                >
+                  Privacy Policy
+                </Link>
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
 
       <div className="border-t border-white/5">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-2 px-4 py-6 text-xs text-muted-foreground md:flex-row md:items-center md:justify-between md:px-8">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-6 text-xs text-muted-foreground md:flex-row md:items-center md:justify-between md:px-8">
           <div>© {new Date().getFullYear()} Oxphi. All rights reserved.</div>
-          <div>Built for businesses that never want to miss a call.</div>
+          <div className="flex flex-wrap items-center gap-4">
+            <Link href="/terms" className="transition hover:text-foreground">
+              Terms of Service
+            </Link>
+            <Link href="/privacy" className="transition hover:text-foreground">
+              Privacy Policy
+            </Link>
+            <a
+              href="mailto:support@oxphi.com"
+              className="transition hover:text-foreground"
+            >
+              Contact
+            </a>
+          </div>
         </div>
       </div>
     </footer>
