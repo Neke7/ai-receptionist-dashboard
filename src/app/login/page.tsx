@@ -23,19 +23,18 @@ export default function LoginPage() {
       });
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(
-          typeof data?.error === "string" && data.error.trim()
-            ? data.error
-            : "Login failed. Please check your API key and try again."
-        );
+        if (res.status === 401) {
+          setError("Invalid API key. Please check and try again.");
+        } else {
+          setError("Unable to validate API key right now. Please try again.");
+        }
         return;
       }
 
       router.push("/");
       router.refresh();
     } catch {
-      setError("Unable to reach login service. Please try again.");
+      setError("Unable to validate API key right now. Please try again.");
     } finally {
       setLoading(false);
     }

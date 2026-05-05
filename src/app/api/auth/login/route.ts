@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     const trimmedKey = apiKey.trim();
 
     // Validate against backend by attempting a protected read
-    const backendRes = await fetch(`${BACKEND}/api/calls`, {
+    const backendRes = await fetch(`${BACKEND}/api/auth/me`, {
       method: "GET",
       headers: {
         "x-api-key": trimmedKey,
