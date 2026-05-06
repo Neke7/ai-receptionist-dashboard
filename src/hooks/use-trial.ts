@@ -1,60 +1,46 @@
 "use client";
-
 import { useEffect, useState } from "react";
 
-export type TrialInfo = {
+export type AccountStatus = {
   id: string;
-  name: string;
+  name: string | null;
   email: string;
-  trialStartDate: string | null;
-  trialEndsAt: string | null;
-  trialExpired: boolean;
+  isSuspended: boolean;
+  suspendedAt: string | null;
   subscriptionStatus: string | null;
   callsThisMonth: number;
 };
 
-type Result = {
-  info: TrialInfo | null;
-  loading: boolean;
-  unauthorized: boolean;
-  refresh: () => Promise<void>;
-};
-
-/**
- * Fetches /api/auth/me once on mount. Consumers use this to drive the trial
- * banner, the blocking redirect to /trial-expired, and any other UI that
- * needs to know where the logged-in client stands in their 14-day trial.
- */
-export function useTrial(): Result {
-  const [info, setInfo] = useState<TrialInfo | null>(null);
+export function useAccountStatus() {
+  const [status, setStatus] = useState<AccountStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [unauthorized, setUnauthorized] = useState(false);
-
-  async function load() {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/auth/me", { cache: "no-store" });
-      if (res.status === 401) {
-        setUnauthorized(true);
-        setInfo(null);
-        return;
-      }
-      if (!res.ok) {
-        setInfo(null);
-        return;
-      }
-      const data = (await res.json()) as TrialInfo;
-      setInfo(data);
-    } catch {
-      setInfo(null);
-    } finally {
-      setLoading(false);
-    }
-  }
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    load();
+    let cancelled = false;
+    async function fetchStatus() {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (!res.ok) {
+          throw new Error("Failed to fetch account status");
+        }
+        const data = await res.json();
+        if (!cancelled) {
+          setStatus(data);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Unknown error");
+          setLoading(false);
+        }
+      }
+    }
+    fetchStatus();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  return { info, loading, unauthorized, refresh: load };
+  return { status, loading, error };
 }

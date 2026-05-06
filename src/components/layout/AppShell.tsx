@@ -15,8 +15,7 @@ import {
   X,
 } from "lucide-react";
 
-import TrialBanner from "@/components/trial-banner";
-import { useTrial } from "@/hooks/use-trial";
+import { useAccountStatus } from "@/hooks/use-trial";
 
 export type ShellVariant = "client" | "admin";
 
@@ -129,26 +128,16 @@ export default function AppShell({
 
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  // Pull account + trial info once per page mount. /api/auth/me returns both
-  // the business name (used in the sidebar) and trial status (drives the
-  // banner + expired-trial redirect below). Admin shell skips it entirely.
-  const { info: trialInfo } = useTrial();
+  const { status: accountStatus } = useAccountStatus();
   const clientName =
-    variant === "client" ? trialInfo?.name : undefined;
+    variant === "client" ? accountStatus?.name ?? undefined : undefined;
 
-  // If the client's trial has ended and they haven't subscribed, force them
-  // onto /trial-expired. Keep /billing reachable so they can still pay, and
-  // obviously don't redirect the trial-expired page onto itself.
   useEffect(() => {
-    if (variant !== "client") return;
-    if (!trialInfo) return;
-    const status = (trialInfo.subscriptionStatus || "").toLowerCase();
-    if (status === "active") return;
-    if (!trialInfo.trialExpired) return;
-    if (pathname === "/trial-expired") return;
-    if (pathname === "/billing" || pathname.startsWith("/billing/")) return;
-    router.replace("/trial-expired");
-  }, [variant, trialInfo, pathname, router]);
+    if (!accountStatus) return;
+    if (accountStatus.isSuspended && pathname !== "/suspended") {
+      router.replace("/suspended");
+    }
+  }, [accountStatus, pathname, router]);
 
   // Close the mobile drawer on route change and lock body scroll while open.
   useEffect(() => {
@@ -287,10 +276,6 @@ export default function AppShell({
       {/* Main */}
       <main className="flex-1 min-w-0 pt-14 md:pt-0 flex flex-col">
         <div className="mx-auto w-full max-w-7xl px-4 md:px-8 py-6 md:py-10 flex-1">
-          {variant === "client" && pathname !== "/trial-expired" ? (
-            <TrialBanner info={trialInfo} />
-          ) : null}
-
           {(title || actions) && (
             <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">

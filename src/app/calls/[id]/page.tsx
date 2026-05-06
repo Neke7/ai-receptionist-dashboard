@@ -191,7 +191,7 @@ export default function CallDetailsPage() {
         return;
       }
       if (res.status === 403) {
-        router.replace("/trial-expired");
+        router.replace("/suspended");
         return;
       }
 
