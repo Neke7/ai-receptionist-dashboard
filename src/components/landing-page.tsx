@@ -1,12 +1,9 @@
-import { cookies } from "next/headers";
 import Link from "next/link";
 import {
   ArrowRight,
   Bell,
   Brain,
   Building2,
-  Check,
-  CheckCircle2,
   ChevronDown,
   FileText,
   Mic,
@@ -55,62 +52,6 @@ const FEATURES = [
   },
 ];
 
-type Tier = {
-  id: "starter" | "pro" | "enterprise";
-  name: string;
-  price: string;
-  tagline: string;
-  features: string[];
-  cta: string;
-  featured?: boolean;
-};
-
-const TIERS: Tier[] = [
-  {
-    id: "starter",
-    name: "Starter",
-    price: "$49",
-    tagline: "For small teams getting started.",
-    features: [
-      "100 included calls / month",
-      "$0.50 per extra call",
-      "Email notifications",
-      "Call summaries & recordings",
-      "Standard support",
-    ],
-    cta: "Start with Starter",
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    price: "$149",
-    tagline: "For growing businesses with higher call volume.",
-    features: [
-      "500 included calls / month",
-      "$0.35 per extra call",
-      "Email + Slack notifications",
-      "Advanced lead scoring",
-      "Priority support",
-    ],
-    cta: "Go Pro",
-    featured: true,
-  },
-  {
-    id: "enterprise",
-    name: "Enterprise",
-    price: "$399",
-    tagline: "For high-volume teams with enterprise needs.",
-    features: [
-      "2,000 included calls / month",
-      "$0.25 per extra call",
-      "Multi-location routing",
-      "SSO & custom integrations",
-      "Dedicated success manager",
-    ],
-    cta: "Talk to sales",
-  },
-];
-
 const TESTIMONIALS = [
   {
     name: "Carla Reyes",
@@ -152,10 +93,6 @@ const FAQS = [
     q: "How accurate is the lead scoring?",
     a: "Every call is scored 0–100 using signals from the conversation — outcome, contact details, scheduling intent, and success markers — and bucketed into Hot, Warm, or Cold. The logic is transparent and you can audit the score on every call page.",
   },
-  {
-    q: "How do I cancel or change plans?",
-    a: "Upgrade, downgrade, or cancel from your billing page at any time. Billing is month-to-month on Starter and Pro, with no long-term contract.",
-  },
 ];
 
 function GradientBackdrop() {
@@ -183,9 +120,6 @@ function NavBar() {
           <a href="#features" className="transition hover:text-foreground">
             Features
           </a>
-          <a href="#pricing" className="transition hover:text-foreground">
-            Pricing
-          </a>
           <a href="#testimonials" className="transition hover:text-foreground">
             Customers
           </a>
@@ -205,7 +139,7 @@ function NavBar() {
             href="/signup"
             className="inline-flex items-center gap-1.5 rounded-md bg-gradient-to-b from-indigo-500 to-indigo-600 px-3.5 py-2 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 transition hover:from-indigo-400 hover:to-indigo-500"
           >
-            Start free
+            Book a Call
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
@@ -244,7 +178,7 @@ function Hero() {
             href="/signup"
             className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-b from-indigo-500 to-indigo-600 px-5 py-3 text-sm font-medium text-white shadow-lg shadow-indigo-500/25 transition hover:from-indigo-400 hover:to-indigo-500"
           >
-            Start Free Trial
+            Book a Call
             <ArrowRight className="h-4 w-4" />
           </Link>
           <a
@@ -254,21 +188,6 @@ function Hero() {
             <PlayCircle className="h-4 w-4" />
             Watch Demo
           </a>
-        </div>
-
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5">
-            <Check className="h-3.5 w-3.5 text-indigo-400" />
-            No credit card required
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <Check className="h-3.5 w-3.5 text-indigo-400" />
-            Cancel anytime
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <Check className="h-3.5 w-3.5 text-indigo-400" />
-            Setup in minutes
-          </span>
         </div>
 
         {/* Product preview placeholder card */}
@@ -346,88 +265,6 @@ function Features() {
             </div>
           ))}
         </div>
-      </div>
-    </section>
-  );
-}
-
-function Pricing({ loggedIn }: { loggedIn: boolean }) {
-  const planHref = (id: Tier["id"]) =>
-    loggedIn ? `/billing?checkout=${id}` : `/signup?plan=${id}`;
-  return (
-    <section id="pricing" className="relative border-t border-white/5">
-      <div className="mx-auto w-full max-w-7xl px-4 py-20 md:px-8 md:py-28">
-        <div className="mx-auto max-w-2xl text-center">
-          <div className="text-xs font-medium uppercase tracking-wider text-indigo-300">
-            Simple, usage-friendly pricing
-          </div>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
-            Pick a plan that fits your call volume.
-          </h2>
-          <p className="mt-3 text-base text-muted-foreground">
-            Every plan includes full lead scoring, summaries, recordings, and
-            integrations. Upgrade or cancel anytime from your billing page.
-          </p>
-        </div>
-
-        <div className="mt-14 grid grid-cols-1 gap-5 md:grid-cols-3">
-          {TIERS.map((tier) => (
-            <div
-              key={tier.id}
-              className={[
-                "relative flex flex-col rounded-xl border p-7 transition",
-                tier.featured
-                  ? "border-indigo-500/40 bg-gradient-to-b from-indigo-500/[0.06] to-[#10121a] shadow-xl shadow-indigo-500/10"
-                  : "border-white/5 bg-[#10121a] hover:border-white/10",
-              ].join(" ")}
-            >
-              {tier.featured ? (
-                <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full border border-indigo-500/30 bg-indigo-500/15 px-3 py-0.5 text-[10px] font-medium uppercase tracking-wider text-indigo-200">
-                  Most popular
-                </span>
-              ) : null}
-
-              <div className="text-sm font-medium text-muted-foreground">
-                {tier.name}
-              </div>
-              <div className="mt-2 flex items-baseline gap-1">
-                <span className="text-4xl font-semibold tracking-tight">
-                  {tier.price}
-                </span>
-                <span className="text-sm text-muted-foreground">/month</span>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">{tier.tagline}</p>
-
-              <ul className="mt-6 space-y-2.5 text-sm">
-                {tier.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-2">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-indigo-400" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <div className="mt-8 pt-6 border-t border-white/5">
-                <Link
-                  href={planHref(tier.id)}
-                  className={[
-                    "inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition",
-                    tier.featured
-                      ? "bg-gradient-to-b from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-500/25 hover:from-indigo-400 hover:to-indigo-500"
-                      : "border border-white/10 bg-white/[0.03] text-foreground hover:border-white/20 hover:bg-white/[0.06]",
-                  ].join(" ")}
-                >
-                  {tier.cta}
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <p className="mt-8 text-center text-xs text-muted-foreground">
-          Prices in USD. Billing is month-to-month — no contracts, no setup fees.
-        </p>
       </div>
     </section>
   );
@@ -523,15 +360,15 @@ function FinalCTA() {
               Stop losing calls. Start winning customers.
             </h2>
             <p className="mt-4 text-base text-muted-foreground">
-              Spin up an Oxphi receptionist in under five minutes. Your first
-              hundred calls are on us.
+              Built for home services teams who want their phone answered, leads
+              captured, and appointments booked — without lifting a finger.
             </p>
             <div className="mt-7 flex flex-col items-start gap-3 sm:flex-row">
               <Link
                 href="/signup"
                 className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-b from-indigo-500 to-indigo-600 px-5 py-3 text-sm font-medium text-white shadow-lg shadow-indigo-500/25 transition hover:from-indigo-400 hover:to-indigo-500"
               >
-                Start Free Trial
+                Book a Call
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
@@ -578,14 +415,6 @@ function Footer() {
                   className="text-muted-foreground transition hover:text-foreground"
                 >
                   Features
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#pricing"
-                  className="text-muted-foreground transition hover:text-foreground"
-                >
-                  Pricing
                 </a>
               </li>
               <li>
@@ -693,19 +522,12 @@ function Footer() {
   );
 }
 
-export default async function LandingPage() {
-  // The login cookie is httpOnly, so we inspect it server-side to decide
-  // whether pricing CTAs should route to /signup (anonymous) or straight to
-  // Stripe checkout via /billing (already authenticated).
-  const cookieStore = await cookies();
-  const loggedIn = Boolean(cookieStore.get("client_api_key")?.value?.trim());
-
+export default function LandingPage() {
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-[#0a0b10] text-foreground">
       <NavBar />
       <Hero />
       <Features />
-      <Pricing loggedIn={loggedIn} />
       <Testimonials />
       <FAQ />
       <FinalCTA />

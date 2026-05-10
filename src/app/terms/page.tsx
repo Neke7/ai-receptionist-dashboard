@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     "The terms governing your use of Oxphi's AI phone receptionist service.",
 };
 
-const LAST_UPDATED = "May 4, 2026";
+const LAST_UPDATED = "May 7, 2026";
 
 export default function TermsPage() {
   return (
@@ -58,12 +58,12 @@ export default function TermsPage() {
 
           <Section id="acceptance" title="1. Acceptance of Terms">
             <p>
-              By creating an account, signing an order form, or using the
-              Service in any way, you agree to be bound by these Terms. If you
-              do not agree, you may not use the Service. If you are using the
-              Service on behalf of a business, you represent that you have the
-              authority to bind that business to these Terms, and references to
-              &ldquo;you&rdquo; include that business.
+              By accepting these Terms (including by signing an order form or
+              using the Service in any way), you agree to be bound by these
+              Terms. If you do not agree, you may not use the Service. If you
+              are using the Service on behalf of a business, you represent that
+              you have the authority to bind that business to these Terms, and
+              references to &ldquo;you&rdquo; include that business.
             </p>
           </Section>
 
@@ -78,9 +78,9 @@ export default function TermsPage() {
               destinations you configure.
             </p>
             <p>
-              The exact features available to you depend on the plan you have
-              subscribed to and any custom configuration we have agreed to in
-              writing.
+              The exact features available to you depend on the service tier
+              or plan defined in your agreement and any custom configuration we
+              have agreed to in writing.
             </p>
           </Section>
 
@@ -99,12 +99,12 @@ export default function TermsPage() {
             title="4. Account Registration and Security"
           >
             <p>
-              To access most features you must create an account and provide
-              accurate, current information about yourself and your business.
-              You are responsible for:
+              Oxphi accounts are not self-serve. We provision accounts after a
+              sales and onboarding process and issue access credentials (such
+              as an API key) directly to the customer. You are responsible for:
             </p>
             <ul>
-              <li>Keeping your login credentials confidential.</li>
+              <li>Keeping your access credentials confidential.</li>
               <li>
                 All activity that takes place through your account, including
                 actions taken by your employees, contractors, or anyone you
@@ -112,8 +112,13 @@ export default function TermsPage() {
               </li>
               <li>
                 Notifying us promptly at{" "}
-                <a href="mailto:support@oxphi.com">support@oxphi.com</a> if
-                you suspect unauthorized use of your account.
+                <a href="mailto:support@oxphi.com">support@oxphi.com</a> if you
+                suspect your credentials have been compromised or your account
+                has been used without authorization.
+              </li>
+              <li>
+                Ensuring that the person setting up the account is at least 18
+                years old and authorized to act on behalf of the business.
               </li>
             </ul>
           </Section>
@@ -209,22 +214,21 @@ export default function TermsPage() {
             title="7. Subscription, Billing, and Cancellation"
           >
             <p>
-              Access to the Service is sold on a subscription basis. The
-              specific plan, included call volume, per-call overage rate,
-              billing frequency, and any custom commercial terms applicable to
-              your account are set out in your signed order form, the plan
-              you select at signup, or another written agreement between you
-              and Oxphi.
+              Pricing and payment terms are not set through the Service. The
+              fees, billing frequency, term length, renewal behavior, and any
+              custom commercial terms applicable to your account are set out
+              in your signed service agreement, order form, or invoice with
+              Oxphi (collectively, your &ldquo;Agreement&rdquo;).
             </p>
             <p>
-              Unless otherwise stated in your signed agreement, fees are
-              billed in advance, are non-refundable, and renew automatically
-              at the end of each billing period. You may cancel future
-              renewals from your billing settings or by contacting us at{" "}
+              Setup fees are due upon signing your Agreement. Recurring fees
+              are billed in advance per the Agreement. Cancellation, term
+              length, and any refund treatment are governed by the Agreement.
+            </p>
+            <p>
+              For billing questions, invoices, or to discuss changes to your
+              Agreement, contact your Oxphi account manager at{" "}
               <a href="mailto:support@oxphi.com">support@oxphi.com</a>.
-              Cancellation takes effect at the end of the current billing
-              period; you remain responsible for fees already incurred,
-              including overage charges.
             </p>
           </Section>
 

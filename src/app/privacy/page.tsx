@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     "How Oxphi collects, uses, and protects information when you use our AI phone receptionist service.",
 };
 
-const LAST_UPDATED = "May 4, 2026";
+const LAST_UPDATED = "May 7, 2026";
 
 export default function PrivacyPage() {
   return (
@@ -60,7 +60,7 @@ export default function PrivacyPage() {
             <ul>
               <li>
                 <strong>Customers</strong> &mdash; the business owners and
-                authorized users who sign up for an Oxphi account and use our
+                authorized users provisioned with an Oxphi account who use our
                 dashboard.
               </li>
               <li>
@@ -85,13 +85,14 @@ export default function PrivacyPage() {
               From Customers
             </h3>
             <p>
-              When you create an Oxphi account or use the dashboard, we
-              collect:
+              When you onboard with Oxphi or use the dashboard, we collect:
             </p>
             <ul>
               <li>
                 <strong>Account information</strong> &mdash; your name, email
-                address, phone number, and password.
+                address, and phone number. Account access is authenticated by
+                an API key issued by Oxphi. We do not collect or store
+                passwords.
               </li>
               <li>
                 <strong>Business information</strong> &mdash; your company
@@ -101,7 +102,9 @@ export default function PrivacyPage() {
               <li>
                 <strong>Billing information</strong> &mdash; payment method
                 details (handled by our payment processor), billing address,
-                plan, and invoice history.
+                and invoice history. Billing details are typically collected
+                directly by Oxphi during onboarding rather than through
+                self-service checkout.
               </li>
               <li>
                 <strong>Usage data</strong> &mdash; pages viewed, features
@@ -160,9 +163,22 @@ export default function PrivacyPage() {
           <Section id="how-we-collect" title="3. How We Collect Information">
             <ul>
               <li>
-                <strong>Directly from Customers</strong> when you sign up,
-                configure your agent, update billing details, or contact
-                support.
+                <strong>From lead inquiries</strong> &mdash; when a prospective
+                customer submits our public lead capture form, we collect the
+                business name, contact name, email, optional phone number, and
+                service type. We do not collect passwords or payment details
+                through this form.
+              </li>
+              <li>
+                <strong>During onboarding</strong> &mdash; once a customer
+                signs a service agreement with Oxphi, we collect additional
+                business and billing details directly from the customer in
+                order to provision the account, configure the AI agent, and
+                set up invoicing.
+              </li>
+              <li>
+                <strong>From Customers using the dashboard</strong> &mdash;
+                when you log in, configure your agent, or contact support.
               </li>
               <li>
                 <strong>Automatically through phone calls</strong> &mdash; our

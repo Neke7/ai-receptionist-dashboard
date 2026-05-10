@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { KeyRound, Loader2, Sparkles } from "lucide-react";
@@ -104,13 +103,7 @@ export default function LoginPage() {
         </div>
 
         <p className="mt-4 text-center text-sm text-muted-foreground">
-          Don&apos;t have an account?{" "}
-          <Link
-            href="/signup"
-            className="font-medium text-indigo-400 hover:text-indigo-300"
-          >
-            Create an account
-          </Link>
+          Need access? Contact your account manager.
         </p>
         <p className="mt-2 text-center text-xs text-muted-foreground">
           Having trouble? Contact your account administrator.
