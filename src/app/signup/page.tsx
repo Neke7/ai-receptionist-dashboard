@@ -211,9 +211,18 @@ export default function SignupPage() {
                   }
                   className="input-base"
                 >
-                  <option value="">Select one…</option>
+                  <option
+                    value=""
+                    style={{ color: "#0a0b10", backgroundColor: "#ffffff" }}
+                  >
+                    Select one…
+                  </option>
                   {SERVICE_TYPES.map((s) => (
-                    <option key={s} value={s}>
+                    <option
+                      key={s}
+                      value={s}
+                      style={{ color: "#0a0b10", backgroundColor: "#ffffff" }}
+                    >
                       {s}
                     </option>
                   ))}
