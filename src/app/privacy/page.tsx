@@ -113,7 +113,7 @@ export default function PrivacyPage() {
               </li>
               <li>
                 <strong>Support communications</strong> &mdash; messages you
-                send to <a href="mailto:support@oxphi.com">support@oxphi.com</a>{" "}
+                send to <a href="mailto:support@oxphi.io">support@oxphi.io</a>{" "}
                 or through other support channels.
               </li>
             </ul>
@@ -344,7 +344,7 @@ export default function PrivacyPage() {
               Customers may request earlier deletion of specific call
               recordings or transcripts, or of their account in full, by
               emailing{" "}
-              <a href="mailto:support@oxphi.com">support@oxphi.com</a>. We
+              <a href="mailto:support@oxphi.io">support@oxphi.io</a>. We
               will honor verifiable deletion requests subject to any
               overriding legal retention obligation.
             </p>
@@ -376,7 +376,7 @@ export default function PrivacyPage() {
             <p>
               No system is perfectly secure. If you become aware of a
               potential security issue, please report it to{" "}
-              <a href="mailto:support@oxphi.com">support@oxphi.com</a> so we
+              <a href="mailto:support@oxphi.io">support@oxphi.io</a> so we
               can investigate.
             </p>
           </Section>
@@ -420,7 +420,7 @@ export default function PrivacyPage() {
             </p>
             <p>
               To exercise any of these rights, email{" "}
-              <a href="mailto:support@oxphi.com">support@oxphi.com</a>. If
+              <a href="mailto:support@oxphi.io">support@oxphi.io</a>. If
               you are a caller, you generally need to direct your request to
               the business that operates the phone number you called &mdash;
               they are the controller of that data.
@@ -433,7 +433,7 @@ export default function PrivacyPage() {
               children under the age of 13. We do not knowingly collect
               personal information from children. If you believe a child has
               provided personal information to us, please contact{" "}
-              <a href="mailto:support@oxphi.com">support@oxphi.com</a> and we
+              <a href="mailto:support@oxphi.io">support@oxphi.io</a> and we
               will take steps to delete it.
             </p>
           </Section>
@@ -468,7 +468,7 @@ export default function PrivacyPage() {
             <p>
               Questions, requests, or concerns about this Privacy Policy or
               your information? Email us at{" "}
-              <a href="mailto:support@oxphi.com">support@oxphi.com</a>.
+              <a href="mailto:support@oxphi.io">support@oxphi.io</a>.
             </p>
           </Section>
         </div>
@@ -485,7 +485,7 @@ export default function PrivacyPage() {
               Privacy Policy
             </Link>
             <a
-              href="mailto:support@oxphi.com"
+              href="mailto:support@oxphi.io"
               className="transition hover:text-foreground"
             >
               Contact

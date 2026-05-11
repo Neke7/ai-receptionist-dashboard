@@ -28,11 +28,11 @@ export default function BillingPage() {
 
           <div className="mt-6 flex justify-center">
             <a
-              href="mailto:support@oxphi.com"
+              href="mailto:support@oxphi.io"
               className="btn-primary inline-flex items-center gap-2"
             >
               <Mail className="h-4 w-4" />
-              Contact support@oxphi.com
+              Contact support@oxphi.io
             </a>
           </div>
         </section>

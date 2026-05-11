@@ -310,7 +310,7 @@ export default function AppShell({
                 Privacy Policy
               </Link>
               <a
-                href="mailto:support@oxphi.com"
+                href="mailto:support@oxphi.io"
                 className="transition hover:text-foreground"
               >
                 Contact

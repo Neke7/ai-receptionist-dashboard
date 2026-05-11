@@ -112,7 +112,7 @@ export default function TermsPage() {
               </li>
               <li>
                 Notifying us promptly at{" "}
-                <a href="mailto:support@oxphi.com">support@oxphi.com</a> if you
+                <a href="mailto:support@oxphi.io">support@oxphi.io</a> if you
                 suspect your credentials have been compromised or your account
                 has been used without authorization.
               </li>
@@ -228,7 +228,7 @@ export default function TermsPage() {
             <p>
               For billing questions, invoices, or to discuss changes to your
               Agreement, contact your Oxphi account manager at{" "}
-              <a href="mailto:support@oxphi.com">support@oxphi.com</a>.
+              <a href="mailto:support@oxphi.io">support@oxphi.io</a>.
             </p>
           </Section>
 
@@ -378,7 +378,7 @@ export default function TermsPage() {
           <Section id="contact" title="16. Contact Information">
             <p>
               Questions about these Terms? Reach us at{" "}
-              <a href="mailto:support@oxphi.com">support@oxphi.com</a>.
+              <a href="mailto:support@oxphi.io">support@oxphi.io</a>.
             </p>
           </Section>
         </div>
@@ -395,7 +395,7 @@ export default function TermsPage() {
               Privacy Policy
             </Link>
             <a
-              href="mailto:support@oxphi.com"
+              href="mailto:support@oxphi.io"
               className="transition hover:text-foreground"
             >
               Contact

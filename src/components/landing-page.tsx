@@ -465,7 +465,7 @@ function Footer() {
               </li>
               <li>
                 <a
-                  href="mailto:support@oxphi.com"
+                  href="mailto:support@oxphi.io"
                   className="text-muted-foreground transition hover:text-foreground"
                 >
                   Contact
@@ -510,7 +510,7 @@ function Footer() {
               Privacy Policy
             </Link>
             <a
-              href="mailto:support@oxphi.com"
+              href="mailto:support@oxphi.io"
               className="transition hover:text-foreground"
             >
               Contact
