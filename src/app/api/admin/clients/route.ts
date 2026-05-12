@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
 const BACKEND =
   process.env.BACKEND_URL?.trim() ||
@@ -13,6 +14,11 @@ function adminBasicAuth(): string {
 
 // GET /api/admin/clients  -> proxies to backend GET /api/clients
 export async function GET() {
+  const cookieStore = await cookies();
+  if (cookieStore.get("admin_auth")?.value !== "true") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const res = await fetch(`${BACKEND}/api/clients`, {
       cache: "no-store",
@@ -37,6 +43,11 @@ export async function GET() {
 
 // POST /api/admin/clients -> proxies to backend POST /api/clients
 export async function POST(req: Request) {
+  const cookieStore = await cookies();
+  if (cookieStore.get("admin_auth")?.value !== "true") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
 

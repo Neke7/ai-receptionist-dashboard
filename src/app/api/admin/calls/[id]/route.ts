@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
 const BACKEND =
   process.env.BACKEND_URL?.trim() ||
@@ -15,6 +16,11 @@ export async function GET(
   _req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
+  const cookieStore = await cookies();
+  if (cookieStore.get("admin_auth")?.value !== "true") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { id } = await context.params;
 

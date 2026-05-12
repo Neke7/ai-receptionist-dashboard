@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
 const BACKEND =
   process.env.BACKEND_URL?.trim() ||
@@ -12,6 +13,11 @@ function adminBasicAuth(): string {
 }
 
 export async function GET() {
+  const cookieStore = await cookies();
+  if (cookieStore.get("admin_auth")?.value !== "true") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const res = await fetch(`${BACKEND}/api/admin/analytics`, {
       method: "GET",

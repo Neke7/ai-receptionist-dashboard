@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
 const BACKEND =
   process.env.BACKEND_URL?.trim() ||
@@ -17,6 +18,11 @@ export async function PATCH(
   req: Request,
   ctx: { params: Promise<Params> }
 ) {
+  const cookieStore = await cookies();
+  if (cookieStore.get("admin_auth")?.value !== "true") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { id } = await ctx.params;
     const body = await req.text();
