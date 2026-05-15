@@ -1,9 +1,11 @@
 // File path: src/app/hvac-demo/page.tsx
-// 
-// Place audio files at:
+//
+// Audio files expected at:
 //   public/audio/routine.mp3
 //   public/audio/emergency.mp3
 //   public/audio/quick-question.mp3
+//
+// Font: Fraunces loaded via layout.tsx (separate edit required — see deployment notes)
 
 import type { Metadata } from "next";
 
@@ -32,7 +34,7 @@ const calls = [
     label: "Emergency Triage",
     customer: "Sarah Williams",
     summary:
-      "AC dies in summer. Caller's 78-year-old mother is in the home. Aria recognizes the vulnerable person, escalates to emergency, commits to a 15-minute callback.",
+      "AC dies in summer. The caller's 78-year-old mother is in the home. Aria recognizes the vulnerable person, escalates to emergency, and commits to a 15-minute callback.",
     duration: "2:16",
     file: "/audio/emergency.mp3",
   },
@@ -50,7 +52,7 @@ const calls = [
 const features = [
   {
     title: "Answers every call",
-    body: "Monday morning, Saturday night, in the middle of an install. Aria picks up while you stay on the tools.",
+    body: "Monday morning, Saturday night, or in the middle of an install. Aria picks up while you stay on the tools.",
   },
   {
     title: "Triages the urgent ones",
@@ -76,91 +78,121 @@ const features = [
 
 export default function HvacDemoPage() {
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-900 antialiased">
-      {/* Editorial header */}
-      <header className="border-b border-stone-200">
+    <div className="relative min-h-screen text-foreground antialiased overflow-hidden">
+      {/* Ambient indigo glow — top-right */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed -top-40 -right-40 h-[600px] w-[600px] rounded-full bg-indigo-500/10 blur-[140px]"
+      />
+      {/* Ambient cyan glow — bottom-left */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed -bottom-40 -left-40 h-[500px] w-[500px] rounded-full bg-cyan-500/5 blur-[140px]"
+      />
+
+      {/* HEADER */}
+      <header className="relative border-b border-white/5">
         <div className="mx-auto max-w-6xl px-6 py-5 flex items-center justify-between">
-          <a href="/" className="font-serif text-2xl tracking-tight text-stone-900">
+          <a href="/" className="font-serif text-2xl tracking-tight text-foreground">
             Oxphi
           </a>
           <a
             href={`tel:${DEMO_PHONE_TEL}`}
-            className="text-sm font-medium text-stone-600 hover:text-stone-900 transition-colors hidden sm:block"
+            className="hidden sm:block text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
-            Try the demo: {DEMO_PHONE}
+            Try the demo:{" "}
+            <span className="text-foreground">{DEMO_PHONE}</span>
           </a>
         </div>
       </header>
 
       {/* HERO */}
-      <section className="border-b border-stone-200">
+      <section className="relative border-b border-white/5">
         <div className="mx-auto max-w-6xl px-6 py-20 lg:py-28">
           <div className="grid lg:grid-cols-12 gap-12 items-start">
             <div className="lg:col-span-7">
-              <p className="text-xs uppercase tracking-[0.2em] text-stone-500 mb-6">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-6">
                 For Houston HVAC Contractors
               </p>
-              <h1 className="font-serif text-5xl lg:text-7xl leading-[1.05] tracking-tight text-stone-900 mb-8">
+              <h1 className="font-serif text-5xl lg:text-7xl leading-[1.05] tracking-tight text-foreground mb-8">
                 Stop missing calls
                 <br />
-                <span className="italic text-stone-600">when you&apos;re on the job.</span>
+                <span className="italic text-muted-foreground">
+                  when you&apos;re on the job.
+                </span>
               </h1>
-              <p className="text-lg lg:text-xl text-stone-700 leading-relaxed max-w-2xl mb-10">
-                Aria is an AI receptionist trained specifically for HVAC owner-operators.
-                She answers your phones 24/7, qualifies callers, books appointments, and
-                texts you every lead — so the next $400 service call doesn&apos;t walk to
-                a competitor.
+              <p className="text-lg lg:text-xl text-muted-foreground leading-relaxed max-w-2xl mb-10">
+                Aria is an AI receptionist trained specifically for HVAC
+                owner-operators. She answers your phones 24/7, qualifies callers,
+                books appointments, and texts you every lead — so the next $400
+                service call doesn&apos;t walk to a competitor.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4">
                 <a
                   href={`tel:${DEMO_PHONE_TEL}`}
-                  className="inline-flex items-center justify-center px-7 py-4 bg-stone-900 text-stone-50 font-medium rounded-sm hover:bg-stone-700 transition-colors group"
+                  className="btn-primary group inline-flex items-center justify-center"
                 >
                   Call the demo — {DEMO_PHONE}
                   <svg
-                    className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform"
+                    className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M17 8l4 4m0 0l-4 4m4-4H3"
+                    />
                   </svg>
                 </a>
                 <a
                   href={SIGNUP_URL}
-                  className="inline-flex items-center justify-center px-7 py-4 bg-transparent border border-stone-900 text-stone-900 font-medium rounded-sm hover:bg-stone-900 hover:text-stone-50 transition-colors"
+                  className="btn-secondary inline-flex items-center justify-center"
                 >
                   Book a call
                 </a>
               </div>
 
-              <p className="mt-6 text-sm text-stone-500">
-                Pretend you&apos;re a customer of <em>Houston Premier HVAC</em> — call the
-                number above and tell Aria your AC is broken. See how she handles it.
+              <p className="mt-6 text-sm text-muted-foreground">
+                Pretend you&apos;re a customer of{" "}
+                <em className="font-serif italic text-foreground">
+                  Houston Premier HVAC
+                </em>{" "}
+                — call the number above and tell Aria your AC is broken. See how
+                she handles it.
               </p>
             </div>
 
-            {/* Side stat panel */}
-            <div className="lg:col-span-5 lg:pl-8 lg:border-l lg:border-stone-200">
+            {/* Stats sidebar */}
+            <div className="lg:col-span-5 lg:pl-10 lg:border-l lg:border-white/5">
               <div className="space-y-10">
                 <div>
-                  <p className="font-serif text-5xl text-stone-900 mb-2">5–15</p>
-                  <p className="text-sm text-stone-600 leading-relaxed">
+                  <p className="font-serif text-5xl text-foreground mb-2 tracking-tight">
+                    5–15
+                  </p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
                     Calls a week most Houston HVAC owners miss to voicemail.
                   </p>
                 </div>
-                <div className="border-t border-stone-200 pt-10">
-                  <p className="font-serif text-5xl text-stone-900 mb-2">$1,600</p>
-                  <p className="text-sm text-stone-600 leading-relaxed">
-                    Average monthly revenue lost from those missed calls, at one $400
-                    service call a week.
+                <div className="border-t border-white/5 pt-10">
+                  <p className="font-serif text-5xl text-foreground mb-2 tracking-tight">
+                    $1,600
+                  </p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    Average monthly revenue lost from those missed calls, at one
+                    $400 service call a week.
                   </p>
                 </div>
-                <div className="border-t border-stone-200 pt-10">
-                  <p className="font-serif text-5xl text-stone-900 mb-2">48 hrs</p>
-                  <p className="text-sm text-stone-600 leading-relaxed">
-                    From signup to Aria answering your phones, trained on your business.
+                <div className="border-t border-white/5 pt-10">
+                  <p className="font-serif text-5xl text-foreground mb-2 tracking-tight">
+                    48 hrs
+                  </p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    From signup to Aria answering your phones, trained on your
+                    business.
                   </p>
                 </div>
               </div>
@@ -170,15 +202,17 @@ export default function HvacDemoPage() {
       </section>
 
       {/* DEMOS */}
-      <section className="border-b border-stone-200 bg-white">
+      <section className="relative border-b border-white/5">
         <div className="mx-auto max-w-6xl px-6 py-20 lg:py-28">
-          <div className="mb-16">
-            <p className="text-xs uppercase tracking-[0.2em] text-stone-500 mb-4">
+          <div className="mb-16 max-w-3xl">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-4">
               Hear Aria in action
             </p>
-            <h2 className="font-serif text-4xl lg:text-5xl tracking-tight text-stone-900 max-w-3xl leading-tight">
+            <h2 className="font-serif text-4xl lg:text-5xl tracking-tight text-foreground leading-tight">
               Three real calls. Three different situations.{" "}
-              <span className="italic text-stone-600">One AI handling all of them.</span>
+              <span className="italic text-muted-foreground">
+                One AI handling all of them.
+              </span>
             </h2>
           </div>
 
@@ -186,35 +220,42 @@ export default function HvacDemoPage() {
             {calls.map((call, idx) => (
               <article
                 key={call.id}
-                className="grid lg:grid-cols-12 gap-8 lg:gap-12 pb-12 border-b border-stone-200 last:border-b-0 last:pb-0"
+                className="grid lg:grid-cols-12 gap-8 lg:gap-12 pb-12 border-b border-white/5 last:border-b-0 last:pb-0"
               >
                 <div className="lg:col-span-1">
-                  <span className="font-serif text-4xl text-stone-300">
+                  <span className="font-serif text-4xl text-white/15 tracking-tight">
                     {String(idx + 1).padStart(2, "0")}
                   </span>
                 </div>
                 <div className="lg:col-span-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-stone-500 mb-3">
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-3">
                     {call.label} · {call.duration}
                   </p>
-                  <h3 className="font-serif text-2xl text-stone-900 mb-3">
+                  <h3 className="font-serif text-2xl text-foreground mb-3 tracking-tight">
                     {call.customer}
                   </h3>
-                  <p className="text-stone-600 leading-relaxed">{call.summary}</p>
+                  <p className="text-muted-foreground leading-relaxed">
+                    {call.summary}
+                  </p>
                 </div>
                 <div className="lg:col-span-7 flex items-center">
-                  <audio
-                    controls
-                    preload="metadata"
-                    src={call.file}
-                    className="w-full"
-                    aria-label={`Demo call — ${call.label}`}
-                  >
-                    Your browser does not support audio playback.{" "}
-                    <a href={call.file} className="underline">
-                      Download the recording
-                    </a>
-                  </audio>
+                  <div className="w-full surface p-4">
+                    <audio
+                      controls
+                      preload="metadata"
+                      src={call.file}
+                      className="w-full"
+                      aria-label={`Demo call — ${call.label}`}
+                    >
+                      Your browser does not support audio playback.{" "}
+                      <a
+                        href={call.file}
+                        className="text-indigo-400 hover:text-indigo-300 underline"
+                      >
+                        Download the recording
+                      </a>
+                    </audio>
+                  </div>
                 </div>
               </article>
             ))}
@@ -223,26 +264,32 @@ export default function HvacDemoPage() {
       </section>
 
       {/* FEATURES */}
-      <section className="border-b border-stone-200">
+      <section className="relative border-b border-white/5">
         <div className="mx-auto max-w-6xl px-6 py-20 lg:py-28">
           <div className="mb-16 max-w-3xl">
-            <p className="text-xs uppercase tracking-[0.2em] text-stone-500 mb-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-4">
               What you get
             </p>
-            <h2 className="font-serif text-4xl lg:text-5xl tracking-tight text-stone-900 leading-tight">
+            <h2 className="font-serif text-4xl lg:text-5xl tracking-tight text-foreground leading-tight">
               A full receptionist.{" "}
-              <span className="italic text-stone-600">Without the salary.</span>
+              <span className="italic text-muted-foreground">
+                Without the salary.
+              </span>
             </h2>
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-12">
             {features.map((f, idx) => (
-              <div key={idx} className="border-t border-stone-300 pt-6">
-                <p className="font-mono text-xs text-stone-500 mb-3">
+              <div key={idx} className="border-t border-white/10 pt-6">
+                <p className="font-mono text-xs text-muted-foreground mb-3">
                   {String(idx + 1).padStart(2, "0")}
                 </p>
-                <h3 className="font-serif text-xl text-stone-900 mb-3">{f.title}</h3>
-                <p className="text-stone-600 leading-relaxed text-sm">{f.body}</p>
+                <h3 className="font-serif text-xl text-foreground mb-3 tracking-tight">
+                  {f.title}
+                </h3>
+                <p className="text-muted-foreground leading-relaxed text-sm">
+                  {f.body}
+                </p>
               </div>
             ))}
           </div>
@@ -250,56 +297,67 @@ export default function HvacDemoPage() {
       </section>
 
       {/* PRICING */}
-      <section className="bg-stone-900 text-stone-50 border-b border-stone-900">
+      <section className="relative border-b border-white/5">
         <div className="mx-auto max-w-6xl px-6 py-20 lg:py-28">
           <div className="grid lg:grid-cols-12 gap-12 items-start">
             <div className="lg:col-span-5">
-              <p className="text-xs uppercase tracking-[0.2em] text-stone-400 mb-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-4">
                 Pricing
               </p>
-              <h2 className="font-serif text-4xl lg:text-5xl tracking-tight leading-tight mb-6">
+              <h2 className="font-serif text-4xl lg:text-5xl tracking-tight text-foreground leading-tight mb-6">
                 Simple.{" "}
-                <span className="italic text-stone-400">No contracts.</span>
+                <span className="italic text-muted-foreground">
+                  No contracts.
+                </span>
               </h2>
-              <p className="text-stone-300 leading-relaxed max-w-md">
-                One-time setup covers Aria&apos;s configuration for your specific business.
-                Monthly is flat — no per-minute fees, no per-call charges, no surprises.
+              <p className="text-muted-foreground leading-relaxed max-w-md">
+                One-time setup covers Aria&apos;s configuration for your specific
+                business. Monthly is flat — no per-minute fees, no per-call
+                charges, no surprises.
               </p>
             </div>
 
-            <div className="lg:col-span-7 lg:pl-8 lg:border-l lg:border-stone-700">
-              <div className="space-y-10">
-                <div className="flex items-baseline justify-between border-b border-stone-700 pb-6">
+            <div className="lg:col-span-7 lg:pl-10 lg:border-l lg:border-white/5">
+              <div className="space-y-8">
+                <div className="flex items-baseline justify-between border-b border-white/5 pb-6">
                   <div>
-                    <p className="font-serif text-3xl mb-1">Setup</p>
-                    <p className="text-sm text-stone-400">
+                    <p className="font-serif text-3xl text-foreground mb-1 tracking-tight">
+                      Setup
+                    </p>
+                    <p className="text-sm text-muted-foreground">
                       One-time. Aria configured for your business in 48 hours.
                     </p>
                   </div>
-                  <p className="font-serif text-5xl">$497</p>
+                  <p className="font-serif text-5xl text-foreground tracking-tight">
+                    $497
+                  </p>
                 </div>
 
-                <div className="flex items-baseline justify-between border-b border-stone-700 pb-6">
+                <div className="flex items-baseline justify-between border-b border-white/5 pb-6">
                   <div>
-                    <p className="font-serif text-3xl mb-1">Monthly</p>
-                    <p className="text-sm text-stone-400">
+                    <p className="font-serif text-3xl text-foreground mb-1 tracking-tight">
+                      Monthly
+                    </p>
+                    <p className="text-sm text-muted-foreground">
                       Unlimited calls. Dashboard included. Cancel anytime.
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-serif text-5xl">$397</p>
-                    <p className="text-sm text-stone-400 mt-1">/month</p>
+                    <p className="font-serif text-5xl text-foreground tracking-tight">
+                      $397
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">/month</p>
                   </div>
                 </div>
 
                 <div className="pt-2">
                   <a
                     href={SIGNUP_URL}
-                    className="inline-flex items-center justify-center w-full sm:w-auto px-8 py-4 bg-stone-50 text-stone-900 font-medium rounded-sm hover:bg-stone-200 transition-colors group"
+                    className="btn-primary group inline-flex items-center justify-center w-full sm:w-auto"
                   >
                     Book a call to get started
                     <svg
-                      className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform"
+                      className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -312,11 +370,11 @@ export default function HvacDemoPage() {
                       />
                     </svg>
                   </a>
-                  <p className="mt-4 text-sm text-stone-400">
+                  <p className="mt-4 text-sm text-muted-foreground">
                     Or try the demo first: call{" "}
                     <a
                       href={`tel:${DEMO_PHONE_TEL}`}
-                      className="text-stone-50 underline underline-offset-4 hover:no-underline"
+                      className="text-indigo-400 hover:text-indigo-300 underline underline-offset-4"
                     >
                       {DEMO_PHONE}
                     </a>{" "}
@@ -330,22 +388,24 @@ export default function HvacDemoPage() {
       </section>
 
       {/* FINAL CTA */}
-      <section className="border-b border-stone-200">
+      <section className="relative border-b border-white/5">
         <div className="mx-auto max-w-6xl px-6 py-20 lg:py-28 text-center">
-          <h2 className="font-serif text-4xl lg:text-6xl tracking-tight text-stone-900 leading-tight mb-8 max-w-3xl mx-auto">
+          <h2 className="font-serif text-4xl lg:text-6xl tracking-tight text-foreground leading-tight mb-8 max-w-3xl mx-auto">
             The next call you miss{" "}
-            <span className="italic text-stone-600">is a customer your competitor gets.</span>
+            <span className="italic text-muted-foreground">
+              is a customer your competitor gets.
+            </span>
           </h2>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <a
               href={`tel:${DEMO_PHONE_TEL}`}
-              className="inline-flex items-center justify-center px-7 py-4 bg-stone-900 text-stone-50 font-medium rounded-sm hover:bg-stone-700 transition-colors"
+              className="btn-primary inline-flex items-center justify-center"
             >
               Call the demo — {DEMO_PHONE}
             </a>
             <a
               href={SIGNUP_URL}
-              className="inline-flex items-center justify-center px-7 py-4 bg-transparent border border-stone-900 text-stone-900 font-medium rounded-sm hover:bg-stone-900 hover:text-stone-50 transition-colors"
+              className="btn-secondary inline-flex items-center justify-center"
             >
               Book a call to get started
             </a>
@@ -354,24 +414,32 @@ export default function HvacDemoPage() {
       </section>
 
       {/* FOOTER */}
-      <footer className="bg-stone-100">
+      <footer className="relative">
         <div className="mx-auto max-w-6xl px-6 py-12 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
           <div>
-            <p className="font-serif text-xl text-stone-900 mb-1">Oxphi</p>
-            <p className="text-sm text-stone-500">
+            <p className="font-serif text-xl text-foreground mb-1 tracking-tight">
+              Oxphi
+            </p>
+            <p className="text-sm text-muted-foreground">
               AI receptionist for home services. Built in Houston.
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 text-sm text-stone-600">
-            <a href="/terms" className="hover:text-stone-900 transition-colors">
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 text-sm text-muted-foreground">
+            <a
+              href="/terms"
+              className="hover:text-foreground transition-colors"
+            >
               Terms
             </a>
-            <a href="/privacy" className="hover:text-stone-900 transition-colors">
+            <a
+              href="/privacy"
+              className="hover:text-foreground transition-colors"
+            >
               Privacy
             </a>
             <a
               href="mailto:support@oxphi.io"
-              className="hover:text-stone-900 transition-colors"
+              className="hover:text-foreground transition-colors"
             >
               support@oxphi.io
             </a>

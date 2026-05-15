@@ -348,3 +348,8 @@ body {
 *::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.18);
 }
+
+/* Map Tailwind's font-serif class to Fraunces */
+.font-serif {
+  font-family: var(--font-fraunces), Georgia, "Times New Roman", serif;
+}
