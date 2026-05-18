@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  ClipboardList,
   Copy,
+  Link2,
   Pause,
   Pencil,
   Play,
@@ -23,6 +25,8 @@ type ClientRecord = {
   apiKey: string;
   retellAgentId: string | null;
   isSuspended?: boolean;
+  onboardingToken?: string | null;
+  onboardingCompletedAt?: string | null;
   createdAt?: string;
 };
 
@@ -263,6 +267,11 @@ export default function AdminPage() {
     }
   }
 
+  async function copyOnboardingLink(token: string) {
+    const url = `${window.location.origin}/onboarding/${token}`;
+    await copyToClipboard(url);
+  }
+
   async function copyToClipboard(text: string) {
     try {
       await navigator.clipboard.writeText(text);
@@ -394,6 +403,7 @@ export default function AdminPage() {
                   <th>Email</th>
                   <th>API Key</th>
                   <th>Retell Agent</th>
+                  <th>Onboarding</th>
                   <th className="text-right">Actions</th>
                 </tr>
               </thead>
@@ -464,6 +474,17 @@ export default function AdminPage() {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </td>
+                    <td>
+                      {client.onboardingCompletedAt ? (
+                        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-emerald-300">
+                          Intake complete
+                        </span>
+                      ) : (
+                        <span className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          Awaiting intake
+                        </span>
+                      )}
+                    </td>
                     <td onClick={(e) => e.stopPropagation()}>
                       <div className="flex flex-wrap items-center justify-end gap-2">
                         <Link
@@ -472,6 +493,31 @@ export default function AdminPage() {
                         >
                           View calls
                         </Link>
+                        <Link
+                          href={`/admin/clients/${client.id}/onboarding`}
+                          className="btn-secondary"
+                          title="View intake answers"
+                        >
+                          <ClipboardList className="h-3.5 w-3.5" />
+                          View intake
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            client.onboardingToken &&
+                            copyOnboardingLink(client.onboardingToken)
+                          }
+                          disabled={!client.onboardingToken}
+                          className="btn-secondary disabled:cursor-not-allowed disabled:opacity-40"
+                          title={
+                            client.onboardingToken
+                              ? "Copy onboarding link"
+                              : "No onboarding token — recreate this client"
+                          }
+                        >
+                          <Link2 className="h-3.5 w-3.5" />
+                          Copy link
+                        </button>
                         <Link
                           href={`/admin/clients/${client.id}/edit`}
                           className="btn-secondary"
