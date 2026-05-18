@@ -13,6 +13,7 @@ type ClientRecord = {
   apiKey: string;
   retellAgentId: string | null;
   slackWebhookUrl: string | null;
+  notificationPhone: string | null;
   createdAt?: string;
 };
 
@@ -26,6 +27,7 @@ export default function EditClientPage() {
   const [email, setEmail] = useState("");
   const [retellAgentId, setRetellAgentId] = useState("");
   const [slackWebhookUrl, setSlackWebhookUrl] = useState("");
+  const [notificationPhone, setNotificationPhone] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -67,6 +69,7 @@ export default function EditClientPage() {
       setEmail(found.email || "");
       setRetellAgentId(found.retellAgentId || "");
       setSlackWebhookUrl(found.slackWebhookUrl || "");
+      setNotificationPhone(found.notificationPhone || "");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load client");
       setClient(null);
@@ -96,6 +99,7 @@ export default function EditClientPage() {
           email,
           retellAgentId: retellAgentId.trim() || null,
           slackWebhookUrl: slackWebhookUrl.trim() || null,
+          notificationPhone: notificationPhone.trim() || null,
         }),
       });
 
@@ -237,6 +241,22 @@ export default function EditClientPage() {
                       api.slack.com/messaging/webhooks
                     </a>
                     .
+                  </p>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                    Notification Phone (SMS)
+                  </label>
+                  <input
+                    value={notificationPhone}
+                    onChange={(e) => setNotificationPhone(e.target.value)}
+                    placeholder="+18325551234"
+                    className="input-base font-mono text-xs"
+                  />
+                  <p className="mt-1.5 text-[11px] text-muted-foreground">
+                    Owner&apos;s cell for SMS lead alerts. Must be E.164 format,
+                    e.g. +18325551234. Leave blank to disable SMS.
                   </p>
                 </div>
               </div>
