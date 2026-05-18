@@ -5,7 +5,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Copy,
+  Pause,
   Pencil,
+  Play,
   Plus,
   RefreshCw,
   RotateCcw,
@@ -20,6 +22,7 @@ type ClientRecord = {
   email: string;
   apiKey: string;
   retellAgentId: string | null;
+  isSuspended?: boolean;
   createdAt?: string;
 };
 
@@ -195,6 +198,71 @@ export default function AdminPage() {
     }
   }
 
+  async function handleSuspendClient(clientId: string, clientName: string) {
+    const confirmed = window.confirm(
+      `Suspend ${clientName}? Aria will stop answering their calls.`
+    );
+    if (!confirmed) return;
+
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/clients/${clientId}/suspend`, {
+        method: "POST",
+      });
+
+      const text = await res.text();
+      let data: unknown = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = {};
+      }
+
+      if (!res.ok) {
+        throw new Error(
+          typeof data === "object" && data && "error" in (data as Record<string, unknown>)
+            ? String((data as Record<string, unknown>).error)
+            : `Failed to suspend client (${res.status})`
+        );
+      }
+
+      await loadClients();
+      setSuccess("Client suspended.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to suspend client");
+    }
+  }
+
+  async function handleUnsuspendClient(clientId: string) {
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/clients/${clientId}/unsuspend`, {
+        method: "POST",
+      });
+
+      const text = await res.text();
+      let data: unknown = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = {};
+      }
+
+      if (!res.ok) {
+        throw new Error(
+          typeof data === "object" && data && "error" in (data as Record<string, unknown>)
+            ? String((data as Record<string, unknown>).error)
+            : `Failed to unsuspend client (${res.status})`
+        );
+      }
+
+      await loadClients();
+      setSuccess("Client unsuspended.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to unsuspend client");
+    }
+  }
+
   async function copyToClipboard(text: string) {
     try {
       await navigator.clipboard.writeText(text);
@@ -345,10 +413,19 @@ export default function AdminPage() {
                       }
                     }}
                     title={`View calls for ${client.name}`}
-                    className="cursor-pointer transition hover:bg-white/[0.02]"
+                    className={`cursor-pointer transition hover:bg-white/[0.02] ${
+                      client.isSuspended ? "opacity-60" : ""
+                    }`}
                   >
                     <td>
-                      <div className="font-medium">{client.name}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{client.name}</span>
+                        {client.isSuspended ? (
+                          <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-300">
+                            Suspended
+                          </span>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="text-muted-foreground">{client.email}</td>
                     <td onClick={(e) => e.stopPropagation()}>
@@ -410,6 +487,27 @@ export default function AdminPage() {
                           <RotateCcw className="h-3.5 w-3.5" />
                           Rotate key
                         </button>
+                        {client.isSuspended ? (
+                          <button
+                            onClick={() => handleUnsuspendClient(client.id)}
+                            className="btn-secondary"
+                            title="Unsuspend client"
+                          >
+                            <Play className="h-3.5 w-3.5" />
+                            Unsuspend
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() =>
+                              handleSuspendClient(client.id, client.name)
+                            }
+                            className="btn-warn"
+                            title="Suspend client"
+                          >
+                            <Pause className="h-3.5 w-3.5" />
+                            Suspend
+                          </button>
+                        )}
                         <button
                           onClick={() => handleDeleteClient(client.id, client.name)}
                           className="btn-danger"
