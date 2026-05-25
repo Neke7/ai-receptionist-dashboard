@@ -2,13 +2,27 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Save } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  Copy,
+  Mail,
+  Phone,
+  PhoneCall,
+  Save,
+} from "lucide-react";
 
 import AppShell from "@/components/layout/AppShell";
 import StatusBadge from "@/components/status-badge";
 import { LeadScoreMeter } from "@/components/lead-temperature";
 
 type CallOutcome = "booked" | "info_only" | "follow_up" | "unknown";
+
+type TranscriptTurn = {
+  role: "agent" | "user";
+  content: string;
+  words?: Array<{ word: string; start: number; end: number }>;
+};
 
 type CallRecord = {
   id: string;
@@ -40,6 +54,15 @@ type CallRecord = {
 
   leadScore: number | null;
   leadTemperature: "hot" | "warm" | "cold" | null;
+
+  rawPayload?: {
+    call?: {
+      transcript?: string;
+      transcript_object?: TranscriptTurn[];
+    };
+  } | null;
+
+  customer_status?: "pending" | "contacted" | "won" | "lost" | null;
 };
 
 function normalizeOutcome(
@@ -67,6 +90,30 @@ function formatDateTime(value: string | null | undefined) {
   return trimmed;
 }
 
+function formatHeroSubtitle(value: string | null | undefined) {
+  if (!value) return "Call details";
+  const trimmed = String(value).trim();
+  let date: Date | null = null;
+  if (/^\d+$/.test(trimmed)) {
+    const d = new Date(Number(trimmed));
+    if (!Number.isNaN(d.getTime())) date = d;
+  } else {
+    const d = new Date(trimmed);
+    if (!Number.isNaN(d.getTime())) date = d;
+  }
+  if (!date) return "Call details";
+  const day = date.toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+  const time = date.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  return `${day} · ${time}`;
+}
+
 function formatDuration(durationMs: number | null | undefined) {
   if (typeof durationMs !== "number" || Number.isNaN(durationMs)) return "—";
   const totalSeconds = Math.round(durationMs / 1000);
@@ -76,29 +123,76 @@ function formatDuration(durationMs: number | null | undefined) {
   return `${seconds}s`;
 }
 
-function SectionCard({
-  title,
-  description,
-  children,
+/**
+ * Parse the flat-string fallback transcript into speaker turns.
+ * Retell historically wrote something like:
+ *   "Agent: Hello, this is Aria…\nUser: Hi, I need a tune-up…\n"
+ * We split on the next "Agent:" / "User:" boundary so multi-line turns stay
+ * together.
+ */
+function parseTranscriptString(transcript: string): TranscriptTurn[] {
+  if (!transcript || typeof transcript !== "string") return [];
+  const SPEAKER = /(^|\n)\s*(Agent|User)\s*:\s*/gi;
+  const turns: TranscriptTurn[] = [];
+
+  // Find every speaker marker, then slice the text between markers.
+  const markers: Array<{ role: "agent" | "user"; start: number; end: number }> = [];
+  let m: RegExpExecArray | null;
+  while ((m = SPEAKER.exec(transcript)) !== null) {
+    const label = m[2].toLowerCase() === "agent" ? "agent" : "user";
+    markers.push({ role: label, start: m.index + m[0].length, end: 0 });
+  }
+  if (markers.length === 0) {
+    // No speaker labels at all — treat the whole thing as a single agent line.
+    return [{ role: "agent", content: transcript.trim() }];
+  }
+  for (let i = 0; i < markers.length; i++) {
+    markers[i].end = i + 1 < markers.length ? markers[i + 1].start - 1 : transcript.length;
+    const content = transcript.slice(markers[i].start, markers[i].end).trim();
+    if (content) turns.push({ role: markers[i].role, content });
+  }
+  return turns;
+}
+
+function CopyButton({
+  label,
+  value,
+  className = "btn-secondary",
+  icon: Icon = Copy,
 }: {
-  title: string;
-  description?: string;
-  children: React.ReactNode;
+  label: string;
+  value: string | null | undefined;
+  className?: string;
+  icon?: React.ComponentType<{ className?: string }>;
 }) {
+  const [copied, setCopied] = useState(false);
+
+  async function onCopy() {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard API can fail on insecure contexts / older browsers.
+      window.prompt("Copy this:", value);
+    }
+  }
+
   return (
-    <div className="surface p-6">
-      <div className="mb-5">
-        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-        {description ? (
-          <p className="mt-1 text-xs text-muted-foreground">{description}</p>
-        ) : null}
-      </div>
-      {children}
-    </div>
+    <button
+      type="button"
+      onClick={onCopy}
+      disabled={!value}
+      className={`${className} disabled:opacity-40 disabled:cursor-not-allowed`}
+    >
+      {copied ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
+      {copied ? "Copied!" : label}
+    </button>
   );
 }
 
-function Field({
+function InfoRow({
   label,
   children,
 }: {
@@ -107,11 +201,31 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+      <div className="text-xs uppercase tracking-wide text-muted-foreground">
         {label}
-      </label>
-      {children}
+      </div>
+      <div className="mt-1 text-base text-foreground">{children}</div>
     </div>
+  );
+}
+
+function FlagChip({
+  label,
+  value,
+}: {
+  label: string;
+  value: boolean | null | undefined;
+}) {
+  const yes = value === true;
+  const no = value === false;
+  const dot = yes ? "bg-emerald-400" : no ? "bg-zinc-500" : "bg-zinc-600";
+  const text = yes ? "Yes" : no ? "No" : "—";
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full border border-white/5 bg-white/[0.03] px-3 py-1 text-xs">
+      <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
+      <span className="text-muted-foreground">{label}:</span>
+      <span className="font-medium text-foreground">{text}</span>
+    </span>
   );
 }
 
@@ -150,6 +264,89 @@ function Toggle({
   );
 }
 
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "rounded-t-md px-4 py-2 text-sm font-medium transition border-b-2",
+        active
+          ? "border-indigo-400 text-foreground"
+          : "border-transparent text-muted-foreground hover:text-foreground",
+      ].join(" ")}
+    >
+      {children}
+    </button>
+  );
+}
+
+function TranscriptView({ call }: { call: CallRecord }) {
+  const turns = useMemo<TranscriptTurn[]>(() => {
+    const objArr = call.rawPayload?.call?.transcript_object;
+    if (Array.isArray(objArr) && objArr.length > 0) {
+      return objArr.filter((t) => t && (t.role === "agent" || t.role === "user"));
+    }
+    const flat = call.rawPayload?.call?.transcript;
+    if (typeof flat === "string" && flat.trim()) {
+      return parseTranscriptString(flat);
+    }
+    return [];
+  }, [call.rawPayload]);
+
+  if (turns.length === 0) {
+    return (
+      <div className="surface p-10 text-center text-sm text-muted-foreground">
+        No transcript is available for this call. Transcripts are generated
+        automatically and may take a few moments to process.
+      </div>
+    );
+  }
+
+  return (
+    <div className="surface p-5 md:p-6">
+      <div className="flex flex-col gap-4">
+        {turns.map((turn, i) => {
+          const isAgent = turn.role === "agent";
+          // TODO: word-level playback sync — wire turn.words[].start/end to
+          // the audio element's currentTime here when we add scrubbing.
+          return (
+            <div
+              key={i}
+              className={[
+                "flex flex-col",
+                isAgent ? "items-start" : "items-end",
+              ].join(" ")}
+            >
+              <span className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">
+                {isAgent ? "Aria" : "Caller"}
+              </span>
+              <div
+                className={[
+                  "max-w-[80%] rounded-2xl p-4 text-sm leading-relaxed",
+                  isAgent
+                    ? "bg-indigo-500/10 text-foreground"
+                    : "bg-white/5 text-foreground",
+                ].join(" ")}
+              >
+                {turn.content}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function CallDetailsPage() {
   const params = useParams();
   const router = useRouter();
@@ -158,20 +355,15 @@ export default function CallDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [call, setCall] = useState<CallRecord | null>(null);
+  const [activeTab, setActiveTab] = useState<"overview" | "transcript" | "notes">(
+    "overview"
+  );
 
   const [form, setForm] = useState({
-    caller_name: "",
-    caller_phone: "",
-    caller_email: "",
-    intent: "",
-    customer_type: "",
-    preferred_date: "",
-    preferred_time: "",
     notes: "",
     appointment_booked: false,
     callback_requested: false,
     call_outcome: "unknown" as CallOutcome,
-    call_summary: "",
     call_successful: false,
   });
 
@@ -181,6 +373,25 @@ export default function CallDetailsPage() {
       call?.appointment_booked ?? form.appointment_booked
     );
   }, [call, form.call_outcome, form.appointment_booked]);
+
+  // Dirty check — only enable Save if an editable field actually changed.
+  const dirty = useMemo(() => {
+    if (!call) return false;
+    const original: typeof form = {
+      notes: call.notes ?? "",
+      appointment_booked: Boolean(call.appointment_booked),
+      callback_requested: Boolean(call.callback_requested),
+      call_outcome: normalizeOutcome(call.call_outcome, call.appointment_booked),
+      call_successful: Boolean(call.call_successful),
+    };
+    return (
+      original.notes !== form.notes ||
+      original.appointment_booked !== form.appointment_booked ||
+      original.callback_requested !== form.callback_requested ||
+      original.call_outcome !== form.call_outcome ||
+      original.call_successful !== form.call_successful
+    );
+  }, [call, form]);
 
   async function loadCall() {
     setLoading(true);
@@ -206,18 +417,10 @@ export default function CallDetailsPage() {
       const derivedOutcome = normalizeOutcome(data.call_outcome, data.appointment_booked);
 
       setForm({
-        caller_name: data.caller_name ?? "",
-        caller_phone: data.caller_phone ?? "",
-        caller_email: data.caller_email ?? "",
-        intent: data.intent ?? "",
-        customer_type: data.customer_type ?? "",
-        preferred_date: data.preferred_date ?? "",
-        preferred_time: data.preferred_time ?? "",
         notes: data.notes ?? "",
         appointment_booked: Boolean(data.appointment_booked),
         callback_requested: Boolean(data.callback_requested),
         call_outcome: derivedOutcome,
-        call_summary: data.call_summary ?? "",
         call_successful: Boolean(data.call_successful),
       });
     } catch (e) {
@@ -259,18 +462,10 @@ export default function CallDetailsPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          caller_name: form.caller_name || null,
-          caller_phone: form.caller_phone || null,
-          caller_email: form.caller_email || null,
-          intent: form.intent || null,
-          customer_type: form.customer_type || null,
-          preferred_date: form.preferred_date || null,
-          preferred_time: form.preferred_time || null,
           notes: form.notes || null,
           appointment_booked: form.appointment_booked,
           callback_requested: form.callback_requested,
           call_outcome: form.call_outcome === "unknown" ? null : form.call_outcome,
-          call_summary: form.call_summary || null,
           call_successful: form.call_successful,
         }),
       });
@@ -309,13 +504,45 @@ export default function CallDetailsPage() {
     );
   }
 
+  const phone = call.caller_phone?.trim() || "";
+  const email = call.caller_email?.trim() || "";
+  const callerName = call.caller_name?.trim() || "Unknown Caller";
+
+  const copyDetailsBlob = [
+    `Name: ${call.caller_name || "—"}`,
+    `Phone: ${call.caller_phone || "—"}`,
+    `Email: ${call.caller_email || "—"}`,
+    `Intent: ${call.intent || "—"}`,
+    `Preferred time: ${[call.preferred_date, call.preferred_time]
+      .filter(Boolean)
+      .join(" ") || "—"}`,
+    "",
+    `Summary: ${call.call_summary || "—"}`,
+  ].join("\n");
+
   return (
     <AppShell
       variant="client"
-      title="Call Details"
-      subtitle={`ID ${call.id}`}
+      title={callerName}
+      subtitle={formatHeroSubtitle(call.start_timestamp || call.createdAt)}
       actions={
-        <>
+        <div className="flex flex-wrap items-center gap-2">
+          {phone ? (
+            <a href={`tel:${phone}`} className="btn-primary">
+              <PhoneCall className="h-4 w-4" />
+              Call back
+            </a>
+          ) : null}
+          <CopyButton label="Copy phone" value={phone} icon={Phone} />
+          <CopyButton label="Copy details" value={copyDetailsBlob} />
+          <button
+            onClick={saveChanges}
+            disabled={saving || !dirty}
+            className="btn-secondary disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Save className="h-4 w-4" />
+            {saving ? "Saving…" : "Save changes"}
+          </button>
           <button
             onClick={() => router.push("/calls")}
             className="btn-secondary"
@@ -324,154 +551,267 @@ export default function CallDetailsPage() {
             <ArrowLeft className="h-4 w-4" />
             Back
           </button>
-          <button onClick={saveChanges} disabled={saving} className="btn-primary">
-            <Save className="h-4 w-4" />
-            {saving ? "Saving…" : "Save changes"}
-          </button>
-        </>
+        </div>
       }
     >
-      <div className="mb-6 flex flex-wrap items-center gap-2">
-        <StatusBadge outcome={outcomeForBadge} />
-        {call.callback_requested ? (
-          <span className="badge">
-            <span className="badge-dot bg-amber-400" />
-            Callback requested
-          </span>
-        ) : null}
-        {call.call_successful ? (
-          <span className="badge">
-            <span className="badge-dot bg-emerald-400" />
-            Successful
-          </span>
-        ) : null}
-      </div>
+      {/* HERO STRIP — lead info / outcome / lead score */}
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+        <div className="md:col-span-1">
+          <div className="text-2xl font-semibold tracking-tight text-foreground">
+            {callerName}
+          </div>
+          <div className="mt-3 space-y-2">
+            {phone ? (
+              <a
+                href={`tel:${phone}`}
+                className="inline-flex items-center gap-2 text-lg text-indigo-300 hover:text-indigo-200 hover:underline"
+              >
+                <Phone className="h-4 w-4" />
+                {phone}
+              </a>
+            ) : (
+              <div className="text-base text-muted-foreground">No phone on file</div>
+            )}
+            {email ? (
+              <div>
+                <a
+                  href={`mailto:${email}`}
+                  className="inline-flex items-center gap-2 text-base text-indigo-300 hover:text-indigo-200 hover:underline"
+                >
+                  <Mail className="h-4 w-4" />
+                  {email}
+                </a>
+              </div>
+            ) : null}
+          </div>
+        </div>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        {/* Left column: lead score + timing + recording */}
-        <div className="space-y-5 lg:col-span-1">
-          <SectionCard
-            title="Lead Score"
-            description="Automated score based on call outcome, contact info, and scheduling signals."
-          >
+        <div className="md:col-span-1 flex flex-col items-start justify-center gap-2">
+          <span className="text-xs uppercase tracking-wide text-muted-foreground">
+            Outcome
+          </span>
+          <div className="text-base">
+            <span className="scale-110 origin-left inline-block">
+              <StatusBadge outcome={outcomeForBadge} />
+            </span>
+          </div>
+          <div className="mt-1 flex flex-wrap gap-2">
+            {call.callback_requested ? (
+              <span className="badge">
+                <span className="badge-dot bg-amber-400" />
+                Callback requested
+              </span>
+            ) : null}
+            {call.call_successful ? (
+              <span className="badge">
+                <span className="badge-dot bg-emerald-400" />
+                Successful
+              </span>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="md:col-span-1">
+          <div className="surface p-5">
             <LeadScoreMeter
               score={call.leadScore}
               temperature={call.leadTemperature}
             />
-          </SectionCard>
-
-          <SectionCard title="Call Timing">
-            <div className="space-y-3">
-              <Field label="Started">
-                <input
-                  readOnly
-                  value={formatDateTime(call.start_timestamp)}
-                  className="input-base"
-                />
-              </Field>
-              <Field label="Ended">
-                <input
-                  readOnly
-                  value={formatDateTime(call.end_timestamp)}
-                  className="input-base"
-                />
-              </Field>
-              <Field label="Duration">
-                <input
-                  readOnly
-                  value={formatDuration(call.duration_ms)}
-                  className="input-base"
-                />
-              </Field>
-            </div>
-          </SectionCard>
-
-          {call.recording_url ? (
-            <SectionCard title="Call Recording">
-              <audio controls className="w-full">
-                <source src={call.recording_url} />
-                Your browser does not support audio playback.
-              </audio>
-            </SectionCard>
-          ) : null}
+          </div>
         </div>
+      </div>
 
-        {/* Right column: caller + booking */}
-        <div className="space-y-5 lg:col-span-2">
-          <SectionCard title="Caller">
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-              <Field label="Name">
-                <input
-                  value={form.caller_name}
-                  onChange={(e) => setForm({ ...form, caller_name: e.target.value })}
-                  placeholder="Caller name"
-                  className="input-base"
-                />
-              </Field>
-              <Field label="Phone">
-                <input
-                  value={form.caller_phone}
-                  onChange={(e) => setForm({ ...form, caller_phone: e.target.value })}
-                  placeholder="+1-___-___-____"
-                  className="input-base"
-                />
-              </Field>
-              <Field label="Email">
-                <input
-                  value={form.caller_email}
-                  onChange={(e) => setForm({ ...form, caller_email: e.target.value })}
-                  placeholder="name@company.com"
-                  className="input-base"
-                />
-              </Field>
+      {/* AI SUMMARY CARD */}
+      <div className="surface mt-6 p-6">
+        <div className="text-xs uppercase tracking-wide text-muted-foreground">
+          Summary
+        </div>
+        <p className="mt-2 text-base leading-relaxed text-foreground">
+          {call.call_summary?.trim()
+            ? call.call_summary
+            : (
+              <span className="text-muted-foreground">
+                No summary available for this call.
+              </span>
+            )}
+        </p>
+      </div>
+
+      {/* TABS */}
+      <div className="mt-8 border-b border-white/5">
+        <div className="flex flex-wrap items-center gap-2">
+          <TabButton
+            active={activeTab === "overview"}
+            onClick={() => setActiveTab("overview")}
+          >
+            Overview
+          </TabButton>
+          <TabButton
+            active={activeTab === "transcript"}
+            onClick={() => setActiveTab("transcript")}
+          >
+            Transcript
+          </TabButton>
+          <TabButton
+            active={activeTab === "notes"}
+            onClick={() => setActiveTab("notes")}
+          >
+            Notes
+          </TabButton>
+        </div>
+      </div>
+
+      <div className="mt-6">
+        {activeTab === "overview" ? (
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+            {/* LEFT — Caller info + Intent */}
+            <div className="space-y-5">
+              <div className="surface p-6">
+                <div className="text-sm font-semibold text-foreground">
+                  Caller info
+                </div>
+                <div className="mt-5 space-y-4">
+                  <InfoRow label="Name">{call.caller_name || "—"}</InfoRow>
+                  <InfoRow label="Phone">
+                    {phone ? (
+                      <a
+                        href={`tel:${phone}`}
+                        className="text-indigo-300 hover:text-indigo-200 hover:underline"
+                      >
+                        {phone}
+                      </a>
+                    ) : (
+                      "—"
+                    )}
+                  </InfoRow>
+                  <InfoRow label="Email">
+                    {email ? (
+                      <a
+                        href={`mailto:${email}`}
+                        className="text-indigo-300 hover:text-indigo-200 hover:underline"
+                      >
+                        {email}
+                      </a>
+                    ) : (
+                      "—"
+                    )}
+                  </InfoRow>
+                  <InfoRow label="Customer type">
+                    {call.customer_type || "—"}
+                  </InfoRow>
+                </div>
+              </div>
+
+              <div className="surface p-6">
+                <div className="text-sm font-semibold text-foreground">Intent</div>
+                <div className="mt-5 space-y-4">
+                  <InfoRow label="What they need">{call.intent || "—"}</InfoRow>
+                  <InfoRow label="Preferred date">
+                    {call.preferred_date || "—"}
+                  </InfoRow>
+                  <InfoRow label="Preferred time">
+                    {call.preferred_time || "—"}
+                  </InfoRow>
+                </div>
+              </div>
             </div>
-          </SectionCard>
 
-          <SectionCard title="Booking & Intent">
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <Field label="Intent">
-                <input
-                  value={form.intent}
-                  onChange={(e) => setForm({ ...form, intent: e.target.value })}
-                  placeholder="book_appointment"
-                  className="input-base"
-                />
-              </Field>
-              <Field label="Customer type">
-                <input
-                  value={form.customer_type}
-                  onChange={(e) => setForm({ ...form, customer_type: e.target.value })}
-                  placeholder="new / returning"
-                  className="input-base"
-                />
-              </Field>
-              <Field label="Preferred date">
-                <input
-                  value={form.preferred_date}
-                  onChange={(e) => setForm({ ...form, preferred_date: e.target.value })}
-                  placeholder="YYYY-MM-DD"
-                  className="input-base"
-                />
-              </Field>
-              <Field label="Preferred time">
-                <input
-                  value={form.preferred_time}
-                  onChange={(e) => setForm({ ...form, preferred_time: e.target.value })}
-                  placeholder="3:00 PM"
-                  className="input-base"
-                />
-              </Field>
+            {/* RIGHT — Call timing + Recording */}
+            <div className="space-y-5">
+              <div className="surface p-6">
+                <div className="text-sm font-semibold text-foreground">
+                  Call timing
+                </div>
+                <div className="mt-5 space-y-4">
+                  <InfoRow label="Started">
+                    {formatDateTime(call.start_timestamp)}
+                  </InfoRow>
+                  <InfoRow label="Ended">
+                    {formatDateTime(call.end_timestamp)}
+                  </InfoRow>
+                  <InfoRow label="Duration">
+                    {formatDuration(call.duration_ms)}
+                  </InfoRow>
+                </div>
+              </div>
+
+              {call.recording_url ? (
+                <div className="surface p-6">
+                  <div className="text-sm font-semibold text-foreground">
+                    Recording
+                  </div>
+                  <audio controls className="mt-4 w-full">
+                    <source src={call.recording_url} />
+                    Your browser does not support audio playback.
+                  </audio>
+                  <div className="border-t border-border/40 pt-4 mt-4">
+                    <div className="flex flex-wrap gap-2">
+                      <FlagChip
+                        label="Appointment booked"
+                        value={call.appointment_booked}
+                      />
+                      <FlagChip
+                        label="Callback requested"
+                        value={call.callback_requested}
+                      />
+                      <FlagChip
+                        label="Call successful"
+                        value={call.call_successful}
+                      />
+                    </div>
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      Edit these in the Notes tab.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="surface p-6">
+                  <div className="text-sm font-semibold text-foreground">
+                    Recording
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    No recording is available for this call.
+                  </p>
+                  <div className="border-t border-border/40 pt-4 mt-4">
+                    <div className="flex flex-wrap gap-2">
+                      <FlagChip
+                        label="Appointment booked"
+                        value={call.appointment_booked}
+                      />
+                      <FlagChip
+                        label="Callback requested"
+                        value={call.callback_requested}
+                      />
+                      <FlagChip
+                        label="Call successful"
+                        value={call.call_successful}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
+          </div>
+        ) : null}
 
-            <div className="mt-5 border-t border-white/5 pt-5">
-              <Field label="Call outcome">
-                <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-                  {([
-                    { key: "booked", label: "Booked" },
-                    { key: "info_only", label: "Info Only" },
-                    { key: "follow_up", label: "Follow up" },
-                    { key: "unknown", label: "Unknown" },
-                  ] as const).map((o) => {
+        {activeTab === "transcript" ? <TranscriptView call={call} /> : null}
+
+        {activeTab === "notes" ? (
+          <div className="surface p-6">
+            <div className="space-y-6">
+              <div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Call outcome
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-2 md:grid-cols-4">
+                  {(
+                    [
+                      { key: "booked", label: "Booked" },
+                      { key: "info_only", label: "Info Only" },
+                      { key: "follow_up", label: "Follow up" },
+                      { key: "unknown", label: "Unknown" },
+                    ] as const
+                  ).map((o) => {
                     const active = form.call_outcome === o.key;
                     return (
                       <button
@@ -490,50 +830,70 @@ export default function CallDetailsPage() {
                     );
                   })}
                 </div>
-              </Field>
-
-              <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-3">
-                <Toggle
-                  label="Appointment booked"
-                  checked={form.appointment_booked}
-                  onChange={toggleAppointmentBooked}
-                />
-                <Toggle
-                  label="Callback requested"
-                  checked={form.callback_requested}
-                  onChange={(v) => setForm({ ...form, callback_requested: v })}
-                />
-                <Toggle
-                  label="Call successful"
-                  checked={form.call_successful}
-                  onChange={(v) => setForm({ ...form, call_successful: v })}
-                />
               </div>
-            </div>
-          </SectionCard>
 
-          <SectionCard title="Summary & Notes">
-            <div className="space-y-3">
-              <Field label="Summary">
-                <input
-                  value={form.call_summary}
-                  onChange={(e) => setForm({ ...form, call_summary: e.target.value })}
-                  placeholder="Short summary…"
-                  className="input-base"
-                />
-              </Field>
-              <Field label="Notes">
+              <div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Flags
+                </div>
+                <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-3">
+                  <Toggle
+                    label="Appointment booked"
+                    checked={form.appointment_booked}
+                    onChange={toggleAppointmentBooked}
+                  />
+                  <Toggle
+                    label="Callback requested"
+                    checked={form.callback_requested}
+                    onChange={(v) =>
+                      setForm({ ...form, callback_requested: v })
+                    }
+                  />
+                  <Toggle
+                    label="Call successful"
+                    checked={form.call_successful}
+                    onChange={(v) => setForm({ ...form, call_successful: v })}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Your notes
+                </div>
                 <textarea
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
                   placeholder="Notes from the call…"
                   rows={5}
-                  className="input-base resize-y"
+                  className="input-base mt-2 resize-y"
                 />
-              </Field>
+              </div>
+
+              <div className="border-t border-border/40 pt-4">
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Customer status
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-white/5 bg-white/[0.03] px-3 py-1 text-xs">
+                    <span className="h-1.5 w-1.5 rounded-full bg-zinc-500" />
+                    <span className="font-medium text-foreground">
+                      {call.customer_status ?? "pending"}
+                    </span>
+                  </span>
+                  <p className="text-xs text-muted-foreground">
+                    Tracking lead status is coming in a future update — for now,
+                    use notes.
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                Changes save when you click &ldquo;Save changes&rdquo; at the top.
+              </p>
             </div>
-          </SectionCard>
-        </div>
+          </div>
+        ) : null}
       </div>
     </AppShell>
   );
