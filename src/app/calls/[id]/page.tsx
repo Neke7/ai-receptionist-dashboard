@@ -5,6 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Check,
+  ChevronDown,
+  ChevronUp,
   Copy,
   Mail,
   Phone,
@@ -135,7 +137,6 @@ function parseTranscriptString(transcript: string): TranscriptTurn[] {
   const SPEAKER = /(^|\n)\s*(Agent|User)\s*:\s*/gi;
   const turns: TranscriptTurn[] = [];
 
-  // Find every speaker marker, then slice the text between markers.
   const markers: Array<{ role: "agent" | "user"; start: number; end: number }> = [];
   let m: RegExpExecArray | null;
   while ((m = SPEAKER.exec(transcript)) !== null) {
@@ -143,7 +144,6 @@ function parseTranscriptString(transcript: string): TranscriptTurn[] {
     markers.push({ role: label, start: m.index + m[0].length, end: 0 });
   }
   if (markers.length === 0) {
-    // No speaker labels at all — treat the whole thing as a single agent line.
     return [{ role: "agent", content: transcript.trim() }];
   }
   for (let i = 0; i < markers.length; i++) {
@@ -154,6 +154,10 @@ function parseTranscriptString(transcript: string): TranscriptTurn[] {
   return turns;
 }
 
+/**
+ * Action-bar copy button. Shows an icon at all sizes and hides the text label
+ * below `sm:` so the action bar doesn't overflow narrow phone screens.
+ */
 function CopyButton({
   label,
   value,
@@ -174,7 +178,6 @@ function CopyButton({
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
     } catch {
-      // Clipboard API can fail on insecure contexts / older browsers.
       window.prompt("Copy this:", value);
     }
   }
@@ -184,10 +187,12 @@ function CopyButton({
       type="button"
       onClick={onCopy}
       disabled={!value}
-      className={`${className} disabled:opacity-40 disabled:cursor-not-allowed`}
+      aria-label={label}
+      title={label}
+      className={`${className} min-h-[40px] disabled:opacity-40 disabled:cursor-not-allowed`}
     >
       {copied ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
-      {copied ? "Copied!" : label}
+      <span className="hidden sm:inline">{copied ? "Copied!" : label}</span>
     </button>
   );
 }
@@ -204,7 +209,7 @@ function InfoRow({
       <div className="text-xs uppercase tracking-wide text-muted-foreground">
         {label}
       </div>
-      <div className="mt-1 text-base text-foreground">{children}</div>
+      <div className="mt-1 text-sm md:text-base text-foreground">{children}</div>
     </div>
   );
 }
@@ -278,7 +283,7 @@ function TabButton({
       type="button"
       onClick={onClick}
       className={[
-        "rounded-t-md px-4 py-2 text-sm font-medium transition border-b-2",
+        "rounded-t-md px-4 py-3 min-h-[44px] text-sm font-medium transition border-b-2 -mb-px",
         active
           ? "border-indigo-400 text-foreground"
           : "border-transparent text-muted-foreground hover:text-foreground",
@@ -302,19 +307,43 @@ function TranscriptView({ call }: { call: CallRecord }) {
     return [];
   }, [call.rawPayload]);
 
+  // Default collapsed; the toggle only shows when there's something to collapse.
+  const [collapsed, setCollapsed] = useState(true);
+
   if (turns.length === 0) {
     return (
-      <div className="surface p-10 text-center text-sm text-muted-foreground">
+      <div className="surface p-6 md:p-10 text-center text-sm text-muted-foreground">
         No transcript is available for this call. Transcripts are generated
         automatically and may take a few moments to process.
       </div>
     );
   }
 
+  const COLLAPSE_THRESHOLD = 3;
+  const hasCollapse = turns.length > COLLAPSE_THRESHOLD;
+  const visibleTurns =
+    hasCollapse && collapsed ? turns.slice(0, COLLAPSE_THRESHOLD) : turns;
+
   return (
-    <div className="surface p-5 md:p-6">
-      <div className="flex flex-col gap-4">
-        {turns.map((turn, i) => {
+    <div className="surface p-4 md:p-6">
+      {/* Header row: label on the left, compact toggle on the right */}
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <span className="text-xs uppercase tracking-wide text-muted-foreground">
+          Conversation transcript
+        </span>
+        {hasCollapse ? (
+          <button
+            type="button"
+            onClick={() => setCollapsed((c) => !c)}
+            className="text-xs font-medium text-indigo-300 hover:text-indigo-200"
+          >
+            {collapsed ? `Show all (${turns.length} turns)` : "Collapse"}
+          </button>
+        ) : null}
+      </div>
+
+      <div className="flex flex-col gap-4 px-2 md:px-0">
+        {visibleTurns.map((turn, i) => {
           const isAgent = turn.role === "agent";
           // TODO: word-level playback sync — wire turn.words[].start/end to
           // the audio element's currentTime here when we add scrubbing.
@@ -331,7 +360,7 @@ function TranscriptView({ call }: { call: CallRecord }) {
               </span>
               <div
                 className={[
-                  "max-w-[80%] rounded-2xl p-4 text-sm leading-relaxed",
+                  "max-w-[85%] md:max-w-[80%] rounded-2xl p-3 md:p-4 text-sm leading-relaxed",
                   isAgent
                     ? "bg-indigo-500/10 text-foreground"
                     : "bg-white/5 text-foreground",
@@ -343,6 +372,28 @@ function TranscriptView({ call }: { call: CallRecord }) {
           );
         })}
       </div>
+
+      {hasCollapse ? (
+        <div className="mt-5 flex justify-center">
+          <button
+            type="button"
+            onClick={() => setCollapsed((c) => !c)}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-300 hover:text-indigo-200"
+          >
+            {collapsed ? (
+              <>
+                <ChevronDown className="h-4 w-4" />
+                Show full transcript ({turns.length} turns)
+              </>
+            ) : (
+              <>
+                <ChevronUp className="h-4 w-4" />
+                Collapse transcript
+              </>
+            )}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -374,7 +425,6 @@ export default function CallDetailsPage() {
     );
   }, [call, form.call_outcome, form.appointment_booked]);
 
-  // Dirty check — only enable Save if an editable field actually changed.
   const dirty = useMemo(() => {
     if (!call) return false;
     const original: typeof form = {
@@ -497,8 +547,10 @@ export default function CallDetailsPage() {
   if (loading || !call) {
     return (
       <AppShell variant="client" title="Call Details">
-        <div className="surface p-10 text-center text-sm text-muted-foreground">
-          Loading call…
+        <div className="w-full max-w-5xl mx-auto px-4 md:px-6">
+          <div className="surface p-10 text-center text-sm text-muted-foreground">
+            Loading call…
+          </div>
         </div>
       </AppShell>
     );
@@ -528,9 +580,13 @@ export default function CallDetailsPage() {
       actions={
         <div className="flex flex-wrap items-center gap-2">
           {phone ? (
-            <a href={`tel:${phone}`} className="btn-primary">
+            <a
+              href={`tel:${phone}`}
+              className="btn-primary min-h-[40px]"
+              aria-label="Call back"
+            >
               <PhoneCall className="h-4 w-4" />
-              Call back
+              <span>Call back</span>
             </a>
           ) : null}
           <CopyButton label="Copy phone" value={phone} icon={Phone} />
@@ -538,39 +594,42 @@ export default function CallDetailsPage() {
           <button
             onClick={saveChanges}
             disabled={saving || !dirty}
-            className="btn-secondary disabled:opacity-40 disabled:cursor-not-allowed"
+            className="btn-secondary min-h-[40px] disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Save className="h-4 w-4" />
-            {saving ? "Saving…" : "Save changes"}
+            <span>{saving ? "Saving…" : "Save changes"}</span>
           </button>
           <button
             onClick={() => router.push("/calls")}
-            className="btn-secondary"
+            className="btn-secondary min-h-[40px]"
             disabled={saving}
           >
             <ArrowLeft className="h-4 w-4" />
-            Back
+            <span>Back</span>
           </button>
         </div>
       }
     >
-      {/* HERO STRIP — lead info / outcome / lead score */}
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-        <div className="md:col-span-1">
-          <div className="text-2xl font-semibold tracking-tight text-foreground">
-            {callerName}
-          </div>
-          <div className="mt-3 space-y-2">
+      <div className="w-full max-w-5xl mx-auto px-4 md:px-6">
+        {/* HERO STRIP — contact / outcome / lead score */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
+          {/* Contact cell — leads with phone now that the AppShell title carries the name */}
+          <div className="w-full space-y-3">
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">
+              Contact
+            </div>
             {phone ? (
               <a
                 href={`tel:${phone}`}
                 className="inline-flex items-center gap-2 text-lg text-indigo-300 hover:text-indigo-200 hover:underline"
               >
-                <Phone className="h-4 w-4" />
-                {phone}
+                <Phone className="h-5 w-5" />
+                <span className="break-all">{phone}</span>
               </a>
             ) : (
-              <div className="text-base text-muted-foreground">No phone on file</div>
+              <div className="text-base text-muted-foreground">
+                No phone on file
+              </div>
             )}
             {email ? (
               <div>
@@ -579,171 +638,182 @@ export default function CallDetailsPage() {
                   className="inline-flex items-center gap-2 text-base text-indigo-300 hover:text-indigo-200 hover:underline"
                 >
                   <Mail className="h-4 w-4" />
-                  {email}
+                  <span className="break-all">{email}</span>
                 </a>
               </div>
             ) : null}
           </div>
-        </div>
 
-        <div className="md:col-span-1 flex flex-col items-start justify-center gap-2">
-          <span className="text-xs uppercase tracking-wide text-muted-foreground">
-            Outcome
-          </span>
-          <div className="text-base">
-            <span className="scale-110 origin-left inline-block">
-              <StatusBadge outcome={outcomeForBadge} />
-            </span>
-          </div>
-          <div className="mt-1 flex flex-wrap gap-2">
-            {call.callback_requested ? (
-              <span className="badge">
-                <span className="badge-dot bg-amber-400" />
-                Callback requested
+          {/* Outcome cell */}
+          <div className="w-full space-y-2">
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">
+              Outcome
+            </div>
+            <div>
+              <span className="scale-110 origin-left inline-block">
+                <StatusBadge outcome={outcomeForBadge} />
               </span>
-            ) : null}
-            {call.call_successful ? (
-              <span className="badge">
-                <span className="badge-dot bg-emerald-400" />
-                Successful
-              </span>
-            ) : null}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {call.callback_requested ? (
+                <span className="badge">
+                  <span className="badge-dot bg-amber-400" />
+                  Callback requested
+                </span>
+              ) : null}
+              {call.call_successful ? (
+                <span className="badge">
+                  <span className="badge-dot bg-emerald-400" />
+                  Successful
+                </span>
+              ) : null}
+            </div>
+          </div>
+
+          {/* Lead score cell */}
+          <div className="w-full">
+            <div className="surface p-4 md:p-5 w-full">
+              <LeadScoreMeter
+                score={call.leadScore}
+                temperature={call.leadTemperature}
+              />
+            </div>
           </div>
         </div>
 
-        <div className="md:col-span-1">
-          <div className="surface p-5">
-            <LeadScoreMeter
-              score={call.leadScore}
-              temperature={call.leadTemperature}
-            />
+        {/* AI SUMMARY CARD */}
+        <div className="surface mt-6 p-4 md:p-6">
+          <div className="text-xs uppercase tracking-wide text-muted-foreground">
+            Summary
           </div>
-        </div>
-      </div>
-
-      {/* AI SUMMARY CARD */}
-      <div className="surface mt-6 p-6">
-        <div className="text-xs uppercase tracking-wide text-muted-foreground">
-          Summary
-        </div>
-        <p className="mt-2 text-base leading-relaxed text-foreground">
-          {call.call_summary?.trim()
-            ? call.call_summary
-            : (
+          <p className="mt-2 text-sm md:text-base leading-relaxed text-foreground">
+            {call.call_summary?.trim() ? (
+              call.call_summary
+            ) : (
               <span className="text-muted-foreground">
                 No summary available for this call.
               </span>
             )}
-        </p>
-      </div>
-
-      {/* TABS */}
-      <div className="mt-8 border-b border-white/5">
-        <div className="flex flex-wrap items-center gap-2">
-          <TabButton
-            active={activeTab === "overview"}
-            onClick={() => setActiveTab("overview")}
-          >
-            Overview
-          </TabButton>
-          <TabButton
-            active={activeTab === "transcript"}
-            onClick={() => setActiveTab("transcript")}
-          >
-            Transcript
-          </TabButton>
-          <TabButton
-            active={activeTab === "notes"}
-            onClick={() => setActiveTab("notes")}
-          >
-            Notes
-          </TabButton>
+          </p>
         </div>
-      </div>
 
-      <div className="mt-6">
-        {activeTab === "overview" ? (
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            {/* LEFT — Caller info + Intent */}
-            <div className="space-y-5">
-              <div className="surface p-6">
-                <div className="text-sm font-semibold text-foreground">
-                  Caller info
+        {/* TABS */}
+        <div className="mt-8 border-b border-white/5">
+          <div className="flex flex-wrap items-center gap-1">
+            <TabButton
+              active={activeTab === "overview"}
+              onClick={() => setActiveTab("overview")}
+            >
+              Overview
+            </TabButton>
+            <TabButton
+              active={activeTab === "transcript"}
+              onClick={() => setActiveTab("transcript")}
+            >
+              Transcript
+            </TabButton>
+            <TabButton
+              active={activeTab === "notes"}
+              onClick={() => setActiveTab("notes")}
+            >
+              Notes
+            </TabButton>
+          </div>
+        </div>
+
+        <div className="mt-6">
+          {activeTab === "overview" ? (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
+              {/* LEFT (mobile: first two cards) — Caller info + Intent */}
+              <div className="space-y-4 md:space-y-5">
+                <div className="surface p-4 md:p-6">
+                  <div className="text-sm font-semibold text-foreground">
+                    Caller info
+                  </div>
+                  <div className="mt-4 md:mt-5 space-y-4">
+                    <InfoRow label="Name">{call.caller_name || "—"}</InfoRow>
+                    <InfoRow label="Phone">
+                      {phone ? (
+                        <a
+                          href={`tel:${phone}`}
+                          className="text-indigo-300 hover:text-indigo-200 hover:underline break-all"
+                        >
+                          {phone}
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </InfoRow>
+                    <InfoRow label="Email">
+                      {email ? (
+                        <a
+                          href={`mailto:${email}`}
+                          className="text-indigo-300 hover:text-indigo-200 hover:underline break-all"
+                        >
+                          {email}
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </InfoRow>
+                    <InfoRow label="Customer type">
+                      {call.customer_type || "—"}
+                    </InfoRow>
+                  </div>
                 </div>
-                <div className="mt-5 space-y-4">
-                  <InfoRow label="Name">{call.caller_name || "—"}</InfoRow>
-                  <InfoRow label="Phone">
-                    {phone ? (
-                      <a
-                        href={`tel:${phone}`}
-                        className="text-indigo-300 hover:text-indigo-200 hover:underline"
-                      >
-                        {phone}
-                      </a>
-                    ) : (
-                      "—"
-                    )}
-                  </InfoRow>
-                  <InfoRow label="Email">
-                    {email ? (
-                      <a
-                        href={`mailto:${email}`}
-                        className="text-indigo-300 hover:text-indigo-200 hover:underline"
-                      >
-                        {email}
-                      </a>
-                    ) : (
-                      "—"
-                    )}
-                  </InfoRow>
-                  <InfoRow label="Customer type">
-                    {call.customer_type || "—"}
-                  </InfoRow>
+
+                <div className="surface p-4 md:p-6">
+                  <div className="text-sm font-semibold text-foreground">
+                    Intent
+                  </div>
+                  <div className="mt-4 md:mt-5 space-y-4">
+                    <InfoRow label="What they need">
+                      {call.intent || "—"}
+                    </InfoRow>
+                    <InfoRow label="Preferred date">
+                      {call.preferred_date || "—"}
+                    </InfoRow>
+                    <InfoRow label="Preferred time">
+                      {call.preferred_time || "—"}
+                    </InfoRow>
+                  </div>
                 </div>
               </div>
 
-              <div className="surface p-6">
-                <div className="text-sm font-semibold text-foreground">Intent</div>
-                <div className="mt-5 space-y-4">
-                  <InfoRow label="What they need">{call.intent || "—"}</InfoRow>
-                  <InfoRow label="Preferred date">
-                    {call.preferred_date || "—"}
-                  </InfoRow>
-                  <InfoRow label="Preferred time">
-                    {call.preferred_time || "—"}
-                  </InfoRow>
+              {/* RIGHT (mobile: bottom two cards) — Timing + Recording */}
+              <div className="space-y-4 md:space-y-5">
+                <div className="surface p-4 md:p-6">
+                  <div className="text-sm font-semibold text-foreground">
+                    Call timing
+                  </div>
+                  <div className="mt-4 md:mt-5 space-y-4">
+                    <InfoRow label="Started">
+                      {formatDateTime(call.start_timestamp)}
+                    </InfoRow>
+                    <InfoRow label="Ended">
+                      {formatDateTime(call.end_timestamp)}
+                    </InfoRow>
+                    <InfoRow label="Duration">
+                      {formatDuration(call.duration_ms)}
+                    </InfoRow>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            {/* RIGHT — Call timing + Recording */}
-            <div className="space-y-5">
-              <div className="surface p-6">
-                <div className="text-sm font-semibold text-foreground">
-                  Call timing
-                </div>
-                <div className="mt-5 space-y-4">
-                  <InfoRow label="Started">
-                    {formatDateTime(call.start_timestamp)}
-                  </InfoRow>
-                  <InfoRow label="Ended">
-                    {formatDateTime(call.end_timestamp)}
-                  </InfoRow>
-                  <InfoRow label="Duration">
-                    {formatDuration(call.duration_ms)}
-                  </InfoRow>
-                </div>
-              </div>
-
-              {call.recording_url ? (
-                <div className="surface p-6">
+                <div className="surface p-4 md:p-6">
                   <div className="text-sm font-semibold text-foreground">
                     Recording
                   </div>
-                  <audio controls className="mt-4 w-full">
-                    <source src={call.recording_url} />
-                    Your browser does not support audio playback.
-                  </audio>
+                  {call.recording_url ? (
+                    <audio controls className="mt-4 w-full">
+                      <source src={call.recording_url} />
+                      Your browser does not support audio playback.
+                    </audio>
+                  ) : (
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      No recording is available for this call.
+                    </p>
+                  )}
+
                   <div className="border-t border-border/40 pt-4 mt-4">
                     <div className="flex flex-wrap gap-2">
                       <FlagChip
@@ -759,141 +829,127 @@ export default function CallDetailsPage() {
                         value={call.call_successful}
                       />
                     </div>
-                    <p className="mt-3 text-xs text-muted-foreground">
-                      Edit these in the Notes tab.
+                    {call.recording_url ? (
+                      <p className="mt-3 text-xs text-muted-foreground">
+                        Edit these in the Notes tab.
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {activeTab === "transcript" ? <TranscriptView call={call} /> : null}
+
+          {activeTab === "notes" ? (
+            <div className="surface p-4 md:p-6">
+              <div className="space-y-6">
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Call outcome
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-2 md:grid-cols-4">
+                    {(
+                      [
+                        { key: "booked", label: "Booked" },
+                        { key: "info_only", label: "Info Only" },
+                        { key: "follow_up", label: "Follow up" },
+                        { key: "unknown", label: "Unknown" },
+                      ] as const
+                    ).map((o) => {
+                      const active = form.call_outcome === o.key;
+                      return (
+                        <button
+                          key={o.key}
+                          type="button"
+                          onClick={() => setOutcome(o.key)}
+                          className={[
+                            "rounded-md border px-3 py-2 min-h-[44px] text-sm font-medium transition",
+                            active
+                              ? "border-indigo-400/50 bg-indigo-500/10 text-indigo-200"
+                              : "border-white/5 bg-white/[0.02] text-muted-foreground hover:text-foreground hover:bg-white/[0.04]",
+                          ].join(" ")}
+                        >
+                          {o.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Flags
+                  </div>
+                  <div className="mt-2 flex flex-col gap-3 md:flex-row md:gap-4">
+                    <div className="flex-1">
+                      <Toggle
+                        label="Appointment booked"
+                        checked={form.appointment_booked}
+                        onChange={toggleAppointmentBooked}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <Toggle
+                        label="Callback requested"
+                        checked={form.callback_requested}
+                        onChange={(v) =>
+                          setForm({ ...form, callback_requested: v })
+                        }
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <Toggle
+                        label="Call successful"
+                        checked={form.call_successful}
+                        onChange={(v) =>
+                          setForm({ ...form, call_successful: v })
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Your notes
+                  </div>
+                  <textarea
+                    value={form.notes}
+                    onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                    placeholder="Notes from the call…"
+                    rows={6}
+                    className="input-base mt-2 resize-y"
+                  />
+                </div>
+
+                <div className="border-t border-border/40 pt-4">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Customer status
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-3">
+                    <span className="inline-flex items-center gap-2 rounded-full border border-white/5 bg-white/[0.03] px-3 py-1 text-xs">
+                      <span className="h-1.5 w-1.5 rounded-full bg-zinc-500" />
+                      <span className="font-medium text-foreground">
+                        {call.customer_status ?? "pending"}
+                      </span>
+                    </span>
+                    <p className="text-xs text-muted-foreground">
+                      Tracking lead status is coming in a future update — for
+                      now, use notes.
                     </p>
                   </div>
                 </div>
-              ) : (
-                <div className="surface p-6">
-                  <div className="text-sm font-semibold text-foreground">
-                    Recording
-                  </div>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    No recording is available for this call.
-                  </p>
-                  <div className="border-t border-border/40 pt-4 mt-4">
-                    <div className="flex flex-wrap gap-2">
-                      <FlagChip
-                        label="Appointment booked"
-                        value={call.appointment_booked}
-                      />
-                      <FlagChip
-                        label="Callback requested"
-                        value={call.callback_requested}
-                      />
-                      <FlagChip
-                        label="Call successful"
-                        value={call.call_successful}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
+
+                <p className="text-xs text-muted-foreground">
+                  Changes save when you click &ldquo;Save changes&rdquo; at the
+                  top.
+                </p>
+              </div>
             </div>
-          </div>
-        ) : null}
-
-        {activeTab === "transcript" ? <TranscriptView call={call} /> : null}
-
-        {activeTab === "notes" ? (
-          <div className="surface p-6">
-            <div className="space-y-6">
-              <div>
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Call outcome
-                </div>
-                <div className="mt-2 grid grid-cols-2 gap-2 md:grid-cols-4">
-                  {(
-                    [
-                      { key: "booked", label: "Booked" },
-                      { key: "info_only", label: "Info Only" },
-                      { key: "follow_up", label: "Follow up" },
-                      { key: "unknown", label: "Unknown" },
-                    ] as const
-                  ).map((o) => {
-                    const active = form.call_outcome === o.key;
-                    return (
-                      <button
-                        key={o.key}
-                        type="button"
-                        onClick={() => setOutcome(o.key)}
-                        className={[
-                          "rounded-md border px-3 py-2 text-sm font-medium transition",
-                          active
-                            ? "border-indigo-400/50 bg-indigo-500/10 text-indigo-200"
-                            : "border-white/5 bg-white/[0.02] text-muted-foreground hover:text-foreground hover:bg-white/[0.04]",
-                        ].join(" ")}
-                      >
-                        {o.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Flags
-                </div>
-                <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-3">
-                  <Toggle
-                    label="Appointment booked"
-                    checked={form.appointment_booked}
-                    onChange={toggleAppointmentBooked}
-                  />
-                  <Toggle
-                    label="Callback requested"
-                    checked={form.callback_requested}
-                    onChange={(v) =>
-                      setForm({ ...form, callback_requested: v })
-                    }
-                  />
-                  <Toggle
-                    label="Call successful"
-                    checked={form.call_successful}
-                    onChange={(v) => setForm({ ...form, call_successful: v })}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Your notes
-                </div>
-                <textarea
-                  value={form.notes}
-                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  placeholder="Notes from the call…"
-                  rows={5}
-                  className="input-base mt-2 resize-y"
-                />
-              </div>
-
-              <div className="border-t border-border/40 pt-4">
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Customer status
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-3">
-                  <span className="inline-flex items-center gap-2 rounded-full border border-white/5 bg-white/[0.03] px-3 py-1 text-xs">
-                    <span className="h-1.5 w-1.5 rounded-full bg-zinc-500" />
-                    <span className="font-medium text-foreground">
-                      {call.customer_status ?? "pending"}
-                    </span>
-                  </span>
-                  <p className="text-xs text-muted-foreground">
-                    Tracking lead status is coming in a future update — for now,
-                    use notes.
-                  </p>
-                </div>
-              </div>
-
-              <p className="text-xs text-muted-foreground">
-                Changes save when you click &ldquo;Save changes&rdquo; at the top.
-              </p>
-            </div>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
       </div>
     </AppShell>
   );
