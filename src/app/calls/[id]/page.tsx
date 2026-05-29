@@ -17,8 +17,7 @@ import {
 import AppShell from "@/components/layout/AppShell";
 import StatusBadge from "@/components/status-badge";
 import { LeadScoreMeter } from "@/components/lead-temperature";
-
-type CallOutcome = "booked" | "info_only" | "follow_up" | "unknown";
+import { normalizeOutcome, type CallOutcome } from "@/lib/calls";
 
 type TranscriptTurn = {
   role: "agent" | "user";
@@ -66,19 +65,6 @@ type CallRecord = {
 
   customer_status?: "pending" | "contacted" | "won" | "lost" | null;
 };
-
-function normalizeOutcome(
-  call_outcome: string | null | undefined,
-  appointment_booked: boolean | null | undefined
-): CallOutcome {
-  const raw = (call_outcome || "").trim().toLowerCase();
-  if (raw === "booked") return "booked";
-  if (raw === "info_only" || raw === "info only") return "info_only";
-  if (raw === "follow_up" || raw === "follow up") return "follow_up";
-  if (appointment_booked === true) return "booked";
-  if (appointment_booked === false) return "info_only";
-  return "unknown";
-}
 
 function formatDateTime(value: string | null | undefined) {
   if (!value) return "—";
@@ -419,11 +405,8 @@ export default function CallDetailsPage() {
   });
 
   const outcomeForBadge = useMemo(() => {
-    return normalizeOutcome(
-      call?.call_outcome ?? form.call_outcome,
-      call?.appointment_booked ?? form.appointment_booked
-    );
-  }, [call, form.call_outcome, form.appointment_booked]);
+    return normalizeOutcome(call?.call_outcome ?? form.call_outcome);
+  }, [call, form.call_outcome]);
 
   const dirty = useMemo(() => {
     if (!call) return false;
@@ -431,7 +414,7 @@ export default function CallDetailsPage() {
       notes: call.notes ?? "",
       appointment_booked: Boolean(call.appointment_booked),
       callback_requested: Boolean(call.callback_requested),
-      call_outcome: normalizeOutcome(call.call_outcome, call.appointment_booked),
+      call_outcome: normalizeOutcome(call.call_outcome),
       call_successful: Boolean(call.call_successful),
     };
     return (
@@ -464,7 +447,7 @@ export default function CallDetailsPage() {
       const data: CallRecord = await res.json();
       setCall(data);
 
-      const derivedOutcome = normalizeOutcome(data.call_outcome, data.appointment_booked);
+      const derivedOutcome = normalizeOutcome(data.call_outcome);
 
       setForm({
         notes: data.notes ?? "",

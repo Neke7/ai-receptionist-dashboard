@@ -34,6 +34,13 @@ const STATUS_MAP: Record<
     ring: "border-white/10",
     bg: "bg-white/5",
   },
+  filtered: {
+    label: "Spam",
+    dot: "bg-rose-400",
+    text: "text-rose-300",
+    ring: "border-rose-400/20",
+    bg: "bg-rose-400/5",
+  },
 };
 
 export default function StatusBadge({ outcome }: StatusBadgeProps) {

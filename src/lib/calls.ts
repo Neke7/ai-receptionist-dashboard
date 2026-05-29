@@ -5,7 +5,7 @@
  * cards) stays in src/components.
  */
 
-export type CallOutcome = "booked" | "follow_up" | "info_only" | "unknown";
+export type CallOutcome = "booked" | "follow_up" | "info_only" | "filtered" | "unknown";
 
 /**
  * Field set returned by GET /api/calls. All fields are optional so the two
@@ -118,8 +118,11 @@ export function formatRelativeTime(value?: string | null): string {
 
 /** Coerce any backend call_outcome value to the four canonical buckets. */
 export function normalizeOutcome(outcome?: string | null): CallOutcome {
-  const key = (outcome || "").toLowerCase();
-  if (key === "booked" || key === "follow_up" || key === "info_only") return key;
+  const key = (outcome || "").trim().toLowerCase();
+  if (key === "booked") return "booked";
+  if (key === "follow_up" || key === "follow up") return "follow_up";
+  if (key === "info_only" || key === "info only") return "info_only";
+  if (key === "filtered") return "filtered";
   return "unknown";
 }
 
