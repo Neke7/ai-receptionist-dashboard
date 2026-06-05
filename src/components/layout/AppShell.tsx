@@ -11,6 +11,7 @@ import {
   CreditCard,
   LogOut,
   Menu,
+  Settings,
   Sparkles,
   X,
 } from "lucide-react";
@@ -37,6 +38,7 @@ const CLIENT_NAV: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/calls", label: "Calls", icon: PhoneCall },
   { href: "/billing", label: "Billing", icon: CreditCard },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 const ADMIN_NAV: NavItem[] = [
