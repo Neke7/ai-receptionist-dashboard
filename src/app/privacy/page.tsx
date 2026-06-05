@@ -471,6 +471,24 @@ export default function PrivacyPage() {
               <a href="mailto:support@oxphi.io">support@oxphi.io</a>.
             </p>
           </Section>
+
+          <Section
+            id="sms"
+            title="14. SMS/Text Messaging and Mobile Data"
+          >
+            <p>
+              Oxphi sends SMS text notifications to subscribed clients regarding
+              inbound calls handled by their AI receptionist. By providing your
+              mobile number and opting in, you consent to receive these
+              notifications. Message frequency varies based on your call volume.
+              Message and data rates may apply. Reply STOP to unsubscribe at any
+              time, or HELP for assistance. No mobile information will be shared
+              with, or sold to, third parties or affiliates for marketing or
+              promotional purposes at any time. Mobile opt-in data and consent
+              are used solely to deliver the Oxphi notification service you
+              subscribed to.
+            </p>
+          </Section>
         </div>
       </main>
 
