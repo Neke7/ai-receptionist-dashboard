@@ -21,6 +21,8 @@ type AdminCallRecord = {
   preferred_time: string | null;
   notes: string | null;
   appointment_booked: boolean | null;
+  appointment_status: string | null;
+  calendar_event_id: string | null;
   callback_requested: boolean | null;
   call_outcome: string | null;
   call_summary: string | null;
@@ -175,7 +177,10 @@ export default function AdminCallDetailPage() {
       }
     >
       <div className="mb-6 flex flex-wrap items-center gap-2">
-        <StatusBadge outcome={call.call_outcome} />
+        <StatusBadge
+          outcome={call.call_outcome}
+          appointmentStatus={call.appointment_status}
+        />
         {call.callback_requested ? (
           <span className="badge">
             <span className="badge-dot bg-amber-400" />

@@ -41,6 +41,8 @@ type AdminCallRecord = {
   preferred_date: string | null;
   preferred_time: string | null;
   appointment_booked: boolean | null;
+  appointment_status: string | null;
+  calendar_event_id: string | null;
   callback_requested: boolean | null;
   call_outcome: string | null;
   call_summary: string | null;
@@ -675,7 +677,10 @@ function AdminCallsPageInner() {
                           )}
                         </td>
                         <td>
-                          <StatusBadge outcome={call.call_outcome} />
+                          <StatusBadge
+                            outcome={call.call_outcome}
+                            appointmentStatus={call.appointment_status}
+                          />
                         </td>
                         <td className="text-muted-foreground tabular-nums">
                           {formatDuration(call.duration_ms)}

@@ -133,7 +133,10 @@ function RecentCallCard({ call }: { call: CallRecord }) {
         </div>
       ) : null}
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <StatusBadge outcome={call.call_outcome} />
+        <StatusBadge
+          outcome={call.call_outcome}
+          appointmentStatus={call.appointment_status}
+        />
         <LeadTemperatureBadge
           temperature={call.leadTemperature}
           score={call.leadScore}
@@ -373,7 +376,10 @@ export default function ClientDashboard() {
                         />
                       </td>
                       <td>
-                        <StatusBadge outcome={call.call_outcome} />
+                        <StatusBadge
+                          outcome={call.call_outcome}
+                          appointmentStatus={call.appointment_status}
+                        />
                       </td>
                       <td className="text-sm text-muted-foreground">
                         {formatRelativeTime(call.createdAt)}

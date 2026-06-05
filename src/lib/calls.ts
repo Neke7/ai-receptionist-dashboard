@@ -26,6 +26,8 @@ export type CallRecord = {
   preferred_date?: string | null;
   preferred_time?: string | null;
   appointment_booked?: boolean | null;
+  appointment_status?: string | null;
+  calendar_event_id?: string | null;
   callback_requested?: boolean | null;
   call_outcome?: string | null;
   call_summary?: string | null;

@@ -1,5 +1,12 @@
 type StatusBadgeProps = {
   outcome: string | null | undefined;
+  /**
+   * Optional Google Calendar booking tier. When present and recognized, it
+   * overrides the `outcome`-based badge so we can distinguish a real calendar
+   * event ("confirmed_booked") from a captured-but-unconfirmed booking
+   * ("pending_booked"). Absent/unrecognized values fall back to `outcome`.
+   */
+  appointmentStatus?: string | null;
 };
 
 const STATUS_MAP: Record<
@@ -12,6 +19,20 @@ const STATUS_MAP: Record<
     text: "text-emerald-300",
     ring: "border-emerald-400/20",
     bg: "bg-emerald-400/5",
+  },
+  confirmed: {
+    label: "Confirmed",
+    dot: "bg-emerald-400",
+    text: "text-emerald-300",
+    ring: "border-emerald-400/20",
+    bg: "bg-emerald-400/5",
+  },
+  pending: {
+    label: "Pending",
+    dot: "bg-amber-400",
+    text: "text-amber-300",
+    ring: "border-amber-400/20",
+    bg: "bg-amber-400/5",
   },
   follow_up: {
     label: "Follow Up",
@@ -43,8 +64,27 @@ const STATUS_MAP: Record<
   },
 };
 
-export default function StatusBadge({ outcome }: StatusBadgeProps) {
-  const key = (outcome || "unknown").toLowerCase();
+/**
+ * Map a backend appointment_status to a STATUS_MAP key. Only the two known
+ * calendar tiers override the outcome-based badge; anything else returns null
+ * so we fall back to the existing `outcome` behavior.
+ */
+function appointmentKey(appointmentStatus?: string | null): string | null {
+  switch ((appointmentStatus || "").trim().toLowerCase()) {
+    case "confirmed_booked":
+      return "confirmed";
+    case "pending_booked":
+      return "pending";
+    default:
+      return null;
+  }
+}
+
+export default function StatusBadge({
+  outcome,
+  appointmentStatus,
+}: StatusBadgeProps) {
+  const key = appointmentKey(appointmentStatus) ?? (outcome || "unknown").toLowerCase();
   const s = STATUS_MAP[key] || STATUS_MAP.unknown;
   return (
     <span

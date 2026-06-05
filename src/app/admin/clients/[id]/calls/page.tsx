@@ -25,6 +25,8 @@ type CallRecord = {
   preferred_date: string | null;
   preferred_time: string | null;
   appointment_booked: boolean | null;
+  appointment_status: string | null;
+  calendar_event_id: string | null;
   callback_requested: boolean | null;
   call_outcome: string | null;
   call_summary: string | null;
@@ -212,7 +214,10 @@ export default function AdminClientCallsPage() {
                         {call.caller_phone || "—"}
                       </td>
                       <td>
-                        <StatusBadge outcome={call.call_outcome} />
+                        <StatusBadge
+                          outcome={call.call_outcome}
+                          appointmentStatus={call.appointment_status}
+                        />
                       </td>
                       <td className="text-muted-foreground">
                         {call.intent || "—"}

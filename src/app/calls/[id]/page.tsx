@@ -42,6 +42,8 @@ type CallRecord = {
   notes: string | null;
 
   appointment_booked: boolean | null;
+  appointment_status: string | null;
+  calendar_event_id: string | null;
   callback_requested: boolean | null;
 
   call_outcome: string | null;
@@ -634,7 +636,10 @@ export default function CallDetailsPage() {
             </div>
             <div>
               <span className="scale-110 origin-left inline-block">
-                <StatusBadge outcome={outcomeForBadge} />
+                <StatusBadge
+                  outcome={outcomeForBadge}
+                  appointmentStatus={call.appointment_status}
+                />
               </span>
             </div>
             <div className="flex flex-wrap gap-2">
