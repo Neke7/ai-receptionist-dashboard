@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Pencil } from "lucide-react";
 
 import AppShell from "@/components/layout/AppShell";
 import StatusBadge from "@/components/status-badge";
@@ -85,6 +85,12 @@ export default function CustomerDetailPage() {
   const [loading, setLoading] = useState(true);
   const [customer, setCustomer] = useState<CustomerDetail | null>(null);
 
+  // Inline name editing (name only — everything else stays read-only).
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState("");
+
   async function loadCustomer() {
     setLoading(true);
     try {
@@ -118,6 +124,72 @@ export default function CustomerDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  function startEdit() {
+    if (!customer) return;
+    setDraft(customer.name ?? "");
+    setEditError("");
+    setEditing(true);
+  }
+
+  function cancelEdit() {
+    setEditing(false);
+    setEditError("");
+  }
+
+  async function saveName() {
+    if (!customer) return;
+    const trimmed = draft.trim();
+    // Guarded by the disabled Save button, but re-check before the request.
+    if (!trimmed || trimmed === (customer.name ?? "").trim()) return;
+
+    setSaving(true);
+    setEditError("");
+    try {
+      const res = await fetch(`/api/customers/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed }),
+      });
+
+      if (res.status === 401) {
+        router.push("/login");
+        return;
+      }
+      if (res.status === 403) {
+        router.replace("/suspended");
+        return;
+      }
+      if (res.status === 400) {
+        setEditError("Name cannot be empty");
+        return;
+      }
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        let msg = `Save failed (${res.status})`;
+        try {
+          const j = text ? JSON.parse(text) : null;
+          if (j && typeof j === "object" && "error" in j) msg = String(j.error);
+        } catch {
+          // non-JSON body — keep the generic message
+        }
+        setEditError(msg);
+        return;
+      }
+
+      // Endpoint returns the updated customer MINUS calls — merge into state and
+      // preserve the existing call history.
+      const updated = await res.json();
+      setCustomer((prev) =>
+        prev ? { ...prev, ...updated, calls: prev.calls } : prev
+      );
+      setEditing(false);
+    } catch {
+      setEditError("Could not save. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   if (loading || !customer) {
     return (
       <AppShell variant="client" title="Customer">
@@ -133,11 +205,13 @@ export default function CustomerDetailPage() {
   const email = customer.email?.trim() || "";
   const address = customer.address?.trim() || "";
 
+  const trimmedDraft = draft.trim();
+  const canSave =
+    trimmedDraft.length > 0 && trimmedDraft !== (customer.name ?? "").trim();
+
   return (
     <AppShell
       variant="client"
-      title={displayName(customer)}
-      subtitle={phone || undefined}
       actions={
         <button
           onClick={() => router.push("/customers")}
@@ -148,6 +222,58 @@ export default function CustomerDetailPage() {
         </button>
       }
     >
+      {/* Name (inline editable) */}
+      <div className="mb-6">
+        {editing ? (
+          <div className="space-y-2">
+            <input
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="Customer name"
+              autoFocus
+              className="input-base max-w-md"
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={saveName}
+                disabled={saving || !canSave}
+                className="btn-primary disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {saving ? "Saving…" : "Save"}
+              </button>
+              <button
+                onClick={cancelEdit}
+                disabled={saving}
+                className="btn-secondary disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Cancel
+              </button>
+            </div>
+            {editError ? (
+              <p className="text-sm text-rose-400">{editError}</p>
+            ) : null}
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl md:text-[28px] font-semibold tracking-tight text-foreground">
+              {displayName(customer)}
+            </h1>
+            <button
+              type="button"
+              onClick={startEdit}
+              aria-label="Edit name"
+              title="Edit name"
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/[0.03] text-muted-foreground transition hover:bg-white/[0.06] hover:text-foreground"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+        {!editing && phone ? (
+          <p className="mt-1 text-sm text-muted-foreground">{phone}</p>
+        ) : null}
+      </div>
+
       {/* Summary */}
       <div className="surface p-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
