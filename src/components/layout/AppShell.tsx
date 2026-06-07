@@ -37,6 +37,7 @@ type NavItem = {
 const CLIENT_NAV: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/calls", label: "Calls", icon: PhoneCall },
+  { href: "/customers", label: "Customers", icon: Users },
   { href: "/billing", label: "Billing", icon: CreditCard },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
