@@ -24,9 +24,11 @@ type CalendarStatus = {
 
 const OFFER_MAX = 500;
 const GREETING_MAX = 200;
+const AMOUNT_MAX = 200;
 
-// Fully-resolved shape returned by GET /api/settings/business-rules. `version`
-// and `emergency.behavior` are server-managed and never edited in the UI.
+// Fully-resolved shape returned by GET /api/settings/business-rules. `version`,
+// `emergency.behavior`, and `serviceArea.outsideAreaBehavior` are server-managed
+// and never edited in the UI.
 type BusinessRules = {
   version: number;
   enabled: boolean;
@@ -34,6 +36,9 @@ type BusinessRules = {
   emergency: { keywords: string[]; behavior: string };
   commercial: { accepted: boolean };
   greeting: { override: string };
+  serviceArea?: { enabled: boolean; zips: string[]; outsideAreaBehavior?: string };
+  tripFee?: { enabled: boolean; amountText: string };
+  notServiced?: { enabled: boolean; items: string[] };
 };
 
 // Flat, editable projection of BusinessRules used by the form.
@@ -44,6 +49,12 @@ type RulesForm = {
   emergencyKeywords: string[];
   commercialAccepted: boolean;
   greetingOverride: string;
+  serviceAreaEnabled: boolean;
+  serviceAreaZips: string[];
+  tripFeeEnabled: boolean;
+  tripFeeAmountText: string;
+  notServicedEnabled: boolean;
+  notServicedItems: string[];
 };
 
 function toForm(r: BusinessRules): RulesForm {
@@ -56,6 +67,14 @@ function toForm(r: BusinessRules): RulesForm {
       : [],
     commercialAccepted: r.commercial?.accepted ?? true,
     greetingOverride: r.greeting?.override ?? "",
+    serviceAreaEnabled: !!r.serviceArea?.enabled,
+    serviceAreaZips: Array.isArray(r.serviceArea?.zips) ? r.serviceArea!.zips : [],
+    tripFeeEnabled: !!r.tripFee?.enabled,
+    tripFeeAmountText: r.tripFee?.amountText ?? "",
+    notServicedEnabled: !!r.notServiced?.enabled,
+    notServicedItems: Array.isArray(r.notServiced?.items)
+      ? r.notServiced!.items
+      : [],
   };
 }
 
@@ -106,6 +125,92 @@ function Toggle({
   );
 }
 
+/**
+ * Tag/chip editor — add on Enter or comma, case-insensitive dedup, removable
+ * chips. Manages its own input state so each instance is independent. Shared by
+ * emergency keywords, service-area ZIPs, and not-serviced items.
+ */
+function ChipInput({
+  values,
+  onChange,
+  placeholder,
+  emptyText,
+  removeLabel = "Remove",
+}: {
+  values: string[];
+  onChange: (next: string[]) => void;
+  placeholder: string;
+  emptyText: string;
+  removeLabel?: string;
+}) {
+  const [input, setInput] = useState("");
+
+  function add() {
+    const v = input.trim();
+    if (!v) {
+      setInput("");
+      return;
+    }
+    const exists = values.some((k) => k.toLowerCase() === v.toLowerCase());
+    if (!exists) onChange([...values, v]);
+    setInput("");
+  }
+
+  function remove(idx: number) {
+    onChange(values.filter((_, i) => i !== idx));
+  }
+
+  return (
+    <>
+      <div className="flex flex-wrap gap-2">
+        {values.length === 0 ? (
+          <span className="text-xs text-muted-foreground">{emptyText}</span>
+        ) : (
+          values.map((v, i) => (
+            <span
+              key={`${v}-${i}`}
+              className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-xs text-foreground"
+            >
+              {v}
+              <button
+                type="button"
+                onClick={() => remove(i)}
+                aria-label={`${removeLabel} ${v}`}
+                className="text-muted-foreground transition hover:text-rose-300"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))
+        )}
+      </div>
+      <div className="flex gap-2">
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === ",") {
+              e.preventDefault();
+              add();
+            }
+          }}
+          placeholder={placeholder}
+          className="input-base"
+        />
+        <button
+          type="button"
+          onClick={add}
+          disabled={!input.trim()}
+          className="btn-secondary shrink-0 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <Plus className="h-4 w-4" />
+          Add
+        </button>
+      </div>
+    </>
+  );
+}
+
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -117,7 +222,6 @@ export default function SettingsPage() {
   const [rulesError, setRulesError] = useState("");
   const [rulesForm, setRulesForm] = useState<RulesForm | null>(null);
   const [rulesOriginal, setRulesOriginal] = useState<RulesForm | null>(null);
-  const [keywordInput, setKeywordInput] = useState("");
   const [rulesSaving, setRulesSaving] = useState(false);
   const [rulesSaveError, setRulesSaveError] = useState("");
   const [rulesSaved, setRulesSaved] = useState(false);
@@ -240,28 +344,6 @@ export default function SettingsPage() {
     setRulesSaveError("");
   }
 
-  function addKeyword() {
-    const v = keywordInput.trim();
-    if (!v || !rulesForm) {
-      setKeywordInput("");
-      return;
-    }
-    const exists = rulesForm.emergencyKeywords.some(
-      (k) => k.toLowerCase() === v.toLowerCase()
-    );
-    if (!exists) {
-      patchForm({ emergencyKeywords: [...rulesForm.emergencyKeywords, v] });
-    }
-    setKeywordInput("");
-  }
-
-  function removeKeyword(idx: number) {
-    if (!rulesForm) return;
-    patchForm({
-      emergencyKeywords: rulesForm.emergencyKeywords.filter((_, i) => i !== idx),
-    });
-  }
-
   async function saveRules() {
     if (!rulesForm) return;
     setRulesSaving(true);
@@ -278,6 +360,18 @@ export default function SettingsPage() {
         emergency: { keywords: rulesForm.emergencyKeywords },
         commercial: { accepted: rulesForm.commercialAccepted },
         greeting: { override: rulesForm.greetingOverride },
+        serviceArea: {
+          enabled: rulesForm.serviceAreaEnabled,
+          zips: rulesForm.serviceAreaZips,
+        },
+        tripFee: {
+          enabled: rulesForm.tripFeeEnabled,
+          amountText: rulesForm.tripFeeAmountText,
+        },
+        notServiced: {
+          enabled: rulesForm.notServicedEnabled,
+          items: rulesForm.notServicedItems,
+        },
       };
 
       const res = await fetch("/api/settings/business-rules", {
@@ -549,53 +643,15 @@ export default function SettingsPage() {
                       Calls mentioning these are flagged urgent for an owner
                       callback.
                     </p>
-                    <div className="flex flex-wrap gap-2">
-                      {rulesForm.emergencyKeywords.length === 0 ? (
-                        <span className="text-xs text-muted-foreground">
-                          No keywords yet.
-                        </span>
-                      ) : (
-                        rulesForm.emergencyKeywords.map((kw, i) => (
-                          <span
-                            key={`${kw}-${i}`}
-                            className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-xs text-foreground"
-                          >
-                            {kw}
-                            <button
-                              type="button"
-                              onClick={() => removeKeyword(i)}
-                              aria-label={`Remove ${kw}`}
-                              className="text-muted-foreground transition hover:text-rose-300"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </span>
-                        ))
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      <input
-                        value={keywordInput}
-                        onChange={(e) => setKeywordInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === ",") {
-                            e.preventDefault();
-                            addKeyword();
-                          }
-                        }}
-                        placeholder="Add a keyword (e.g. flooding, no heat)"
-                        className="input-base"
-                      />
-                      <button
-                        type="button"
-                        onClick={addKeyword}
-                        disabled={!keywordInput.trim()}
-                        className="btn-secondary shrink-0 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        <Plus className="h-4 w-4" />
-                        Add
-                      </button>
-                    </div>
+                    <ChipInput
+                      values={rulesForm.emergencyKeywords}
+                      onChange={(next) =>
+                        patchForm({ emergencyKeywords: next })
+                      }
+                      placeholder="Add a keyword (e.g. flooding, no heat)"
+                      emptyText="No keywords yet."
+                      removeLabel="Remove"
+                    />
                   </div>
 
                   {/* Commercial jobs */}
@@ -604,6 +660,92 @@ export default function SettingsPage() {
                     checked={rulesForm.commercialAccepted}
                     onChange={(v) => patchForm({ commercialAccepted: v })}
                   />
+
+                  {/* Service area */}
+                  <div className="space-y-2">
+                    <Toggle
+                      label="Limit service to specific ZIP codes"
+                      checked={rulesForm.serviceAreaEnabled}
+                      onChange={(v) => patchForm({ serviceAreaEnabled: v })}
+                    />
+                    {rulesForm.serviceAreaEnabled ? (
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground">
+                          Calls from outside these ZIPs are taken as a callback
+                          instead of a booking.
+                        </p>
+                        <ChipInput
+                          values={rulesForm.serviceAreaZips}
+                          onChange={(next) =>
+                            patchForm({ serviceAreaZips: next })
+                          }
+                          placeholder="Add a ZIP code"
+                          emptyText="No ZIP codes yet."
+                          removeLabel="Remove ZIP"
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {/* Trip / diagnostic fee */}
+                  <div className="space-y-2">
+                    <Toggle
+                      label="Tell callers our trip/diagnostic fee"
+                      checked={rulesForm.tripFeeEnabled}
+                      onChange={(v) => patchForm({ tripFeeEnabled: v })}
+                    />
+                    {rulesForm.tripFeeEnabled ? (
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">
+                          Aria will say this exactly when callers ask what it
+                          costs to come out.
+                        </p>
+                        <input
+                          value={rulesForm.tripFeeAmountText}
+                          onChange={(e) =>
+                            patchForm({
+                              tripFeeAmountText: e.target.value.slice(
+                                0,
+                                AMOUNT_MAX
+                              ),
+                            })
+                          }
+                          maxLength={AMOUNT_MAX}
+                          placeholder="$89 diagnostic, applied to any repair"
+                          className="input-base"
+                        />
+                        <div className="text-right text-xs text-muted-foreground">
+                          {rulesForm.tripFeeAmountText.length}/{AMOUNT_MAX}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {/* Brands / systems not serviced */}
+                  <div className="space-y-2">
+                    <Toggle
+                      label="Flag jobs we don't service"
+                      checked={rulesForm.notServicedEnabled}
+                      onChange={(v) => patchForm({ notServicedEnabled: v })}
+                    />
+                    {rulesForm.notServicedEnabled ? (
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground">
+                          Callers needing these are routed to a callback instead
+                          of a booking.
+                        </p>
+                        <ChipInput
+                          values={rulesForm.notServicedItems}
+                          onChange={(next) =>
+                            patchForm({ notServicedItems: next })
+                          }
+                          placeholder="e.g. oil furnaces, boilers"
+                          emptyText="Nothing added yet."
+                          removeLabel="Remove"
+                        />
+                      </div>
+                    ) : null}
+                  </div>
 
                   {/* Custom greeting */}
                   <div className="space-y-1">
