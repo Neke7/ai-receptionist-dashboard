@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertCircle, AlertTriangle, Calendar, Check, CheckCircle2 } from "lucide-react";
+import {
+  AlertCircle,
+  AlertTriangle,
+  Calendar,
+  Check,
+  CheckCircle2,
+  ClipboardList,
+  Plus,
+  X,
+} from "lucide-react";
 
 import AppShell from "@/components/layout/AppShell";
 
@@ -11,11 +20,107 @@ type CalendarStatus = {
   calendarId?: string | null;
 };
 
+// ── Business Rules (SOPs) ────────────────────────────────────────────────────
+
+const OFFER_MAX = 500;
+const GREETING_MAX = 200;
+
+// Fully-resolved shape returned by GET /api/settings/business-rules. `version`
+// and `emergency.behavior` are server-managed and never edited in the UI.
+type BusinessRules = {
+  version: number;
+  enabled: boolean;
+  conversionOffer: { enabled: boolean; text: string };
+  emergency: { keywords: string[]; behavior: string };
+  commercial: { accepted: boolean };
+  greeting: { override: string };
+};
+
+// Flat, editable projection of BusinessRules used by the form.
+type RulesForm = {
+  enabled: boolean;
+  conversionOfferEnabled: boolean;
+  conversionOfferText: string;
+  emergencyKeywords: string[];
+  commercialAccepted: boolean;
+  greetingOverride: string;
+};
+
+function toForm(r: BusinessRules): RulesForm {
+  return {
+    enabled: !!r.enabled,
+    conversionOfferEnabled: !!r.conversionOffer?.enabled,
+    conversionOfferText: r.conversionOffer?.text ?? "",
+    emergencyKeywords: Array.isArray(r.emergency?.keywords)
+      ? r.emergency.keywords
+      : [],
+    commercialAccepted: r.commercial?.accepted ?? true,
+    greetingOverride: r.greeting?.override ?? "",
+  };
+}
+
+/**
+ * Inline switch matching the Toggle used on the call detail page (role="switch",
+ * indigo when on). Adds an optional `disabled` state for greyed sub-rules.
+ */
+function Toggle({
+  checked,
+  onChange,
+  label,
+  disabled = false,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  disabled?: boolean;
+}) {
+  return (
+    <label
+      className={[
+        "flex items-center justify-between rounded-md border border-white/5 bg-white/[0.02] px-3 py-2.5 transition",
+        disabled
+          ? "cursor-not-allowed opacity-50"
+          : "cursor-pointer hover:bg-white/[0.04]",
+      ].join(" ")}
+    >
+      <span className="text-sm text-foreground">{label}</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        disabled={disabled}
+        onClick={() => onChange(!checked)}
+        className={[
+          "relative inline-flex h-5 w-9 shrink-0 rounded-full border transition",
+          checked ? "bg-indigo-500 border-indigo-400" : "bg-white/5 border-white/10",
+        ].join(" ")}
+      >
+        <span
+          className={[
+            "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition",
+            checked ? "left-4" : "left-0.5",
+          ].join(" ")}
+        />
+      </button>
+    </label>
+  );
+}
+
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [status, setStatus] = useState<CalendarStatus | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
+
+  // Business Rules (SOPs) state.
+  const [rulesLoading, setRulesLoading] = useState(true);
+  const [rulesError, setRulesError] = useState("");
+  const [rulesForm, setRulesForm] = useState<RulesForm | null>(null);
+  const [rulesOriginal, setRulesOriginal] = useState<RulesForm | null>(null);
+  const [keywordInput, setKeywordInput] = useState("");
+  const [rulesSaving, setRulesSaving] = useState(false);
+  const [rulesSaveError, setRulesSaveError] = useState("");
+  const [rulesSaved, setRulesSaved] = useState(false);
 
   // Banner driven by the params the backend OAuth callback redirects back with.
   // Read from the URL directly (rather than useSearchParams) to avoid a Suspense
@@ -92,6 +197,141 @@ export default function SettingsPage() {
   useEffect(() => {
     loadStatus();
   }, []);
+
+  async function loadRules() {
+    setRulesLoading(true);
+    setRulesError("");
+    try {
+      const res = await fetch("/api/settings/business-rules", {
+        cache: "no-store",
+      });
+      if (res.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+      if (res.status === 403) {
+        window.location.href = "/suspended";
+        return;
+      }
+      if (!res.ok) {
+        throw new Error(`Failed to load business rules (${res.status})`);
+      }
+      const data: BusinessRules = await res.json();
+      const form = toForm(data);
+      setRulesForm(form);
+      setRulesOriginal(form);
+    } catch (e) {
+      setRulesError(
+        e instanceof Error ? e.message : "Could not load business rules."
+      );
+      setRulesForm(null);
+    } finally {
+      setRulesLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadRules();
+  }, []);
+
+  function patchForm(patch: Partial<RulesForm>) {
+    setRulesForm((f) => (f ? { ...f, ...patch } : f));
+    setRulesSaved(false);
+    setRulesSaveError("");
+  }
+
+  function addKeyword() {
+    const v = keywordInput.trim();
+    if (!v || !rulesForm) {
+      setKeywordInput("");
+      return;
+    }
+    const exists = rulesForm.emergencyKeywords.some(
+      (k) => k.toLowerCase() === v.toLowerCase()
+    );
+    if (!exists) {
+      patchForm({ emergencyKeywords: [...rulesForm.emergencyKeywords, v] });
+    }
+    setKeywordInput("");
+  }
+
+  function removeKeyword(idx: number) {
+    if (!rulesForm) return;
+    patchForm({
+      emergencyKeywords: rulesForm.emergencyKeywords.filter((_, i) => i !== idx),
+    });
+  }
+
+  async function saveRules() {
+    if (!rulesForm) return;
+    setRulesSaving(true);
+    setRulesSaveError("");
+    setRulesSaved(false);
+    try {
+      // Whitelisted partial only — never version or emergency.behavior.
+      const payload = {
+        enabled: rulesForm.enabled,
+        conversionOffer: {
+          enabled: rulesForm.conversionOfferEnabled,
+          text: rulesForm.conversionOfferText,
+        },
+        emergency: { keywords: rulesForm.emergencyKeywords },
+        commercial: { accepted: rulesForm.commercialAccepted },
+        greeting: { override: rulesForm.greetingOverride },
+      };
+
+      const res = await fetch("/api/settings/business-rules", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+      if (res.status === 403) {
+        window.location.href = "/suspended";
+        return;
+      }
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        let msg = `Save failed (${res.status})`;
+        try {
+          const j = text ? JSON.parse(text) : null;
+          if (j && typeof j === "object" && "error" in j) msg = String(j.error);
+        } catch {
+          // non-JSON body — keep the generic message
+        }
+        setRulesSaveError(msg);
+        return;
+      }
+
+      // Re-sync from the authoritative response when it returns the resolved
+      // object; otherwise trust the form we just sent.
+      let next: RulesForm = rulesForm;
+      try {
+        const data = await res.json();
+        if (data && typeof data === "object" && "enabled" in data) {
+          next = toForm(data as BusinessRules);
+        }
+      } catch {
+        // empty/non-JSON body — keep `next` as the submitted form
+      }
+      setRulesForm(next);
+      setRulesOriginal(next);
+      setRulesSaved(true);
+    } catch {
+      setRulesSaveError("Could not save. Please try again.");
+    } finally {
+      setRulesSaving(false);
+    }
+  }
+
+  const rulesDirty =
+    !!rulesForm &&
+    !!rulesOriginal &&
+    JSON.stringify(rulesForm) !== JSON.stringify(rulesOriginal);
 
   const connected = status?.connected === true;
   const enabled = status?.enabled === true;
@@ -217,6 +457,213 @@ export default function SettingsPage() {
                 </a>
               </div>
             )}
+          </div>
+        </section>
+
+        {/* ── Business Rules (SOPs) ─────────────────────────────────── */}
+        <section className="surface mt-6 p-6 md:p-8">
+          {/* Header */}
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-lg shadow-indigo-500/20">
+              <ClipboardList className="h-5 w-5 text-white" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold tracking-tight text-foreground">
+                Business Rules (SOPs)
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Standard operating procedures Aria follows on every call —
+                follow-up offers, emergency handling, commercial jobs, and your
+                greeting.
+              </p>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="mt-6 border-t border-white/5 pt-6">
+            {rulesLoading ? (
+              <div className="text-sm text-muted-foreground">
+                Loading business rules…
+              </div>
+            ) : rulesError ? (
+              <div className="flex items-start gap-2 rounded-md border border-rose-400/20 bg-rose-400/5 p-3 text-sm text-rose-300">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{rulesError}</span>
+              </div>
+            ) : rulesForm ? (
+              <div className="space-y-6">
+                {/* Master toggle */}
+                <Toggle
+                  label="Enable Business Rules (SOPs)"
+                  checked={rulesForm.enabled}
+                  onChange={(v) => patchForm({ enabled: v })}
+                />
+
+                {/* Sub-rules — inert + greyed until the master switch is on */}
+                <div
+                  className={[
+                    "space-y-6",
+                    rulesForm.enabled ? "" : "pointer-events-none opacity-50",
+                  ].join(" ")}
+                  aria-disabled={!rulesForm.enabled}
+                >
+                  {/* Conversion offer */}
+                  <div className="space-y-3">
+                    <Toggle
+                      label="Offer a follow-up after each booking"
+                      checked={rulesForm.conversionOfferEnabled}
+                      onChange={(v) =>
+                        patchForm({ conversionOfferEnabled: v })
+                      }
+                    />
+                    {rulesForm.conversionOfferEnabled ? (
+                      <div>
+                        <textarea
+                          value={rulesForm.conversionOfferText}
+                          onChange={(e) =>
+                            patchForm({
+                              conversionOfferText: e.target.value.slice(
+                                0,
+                                OFFER_MAX
+                              ),
+                            })
+                          }
+                          maxLength={OFFER_MAX}
+                          rows={3}
+                          placeholder="After your service, would you like to hear about our seasonal maintenance plan?"
+                          className="input-base resize-y"
+                        />
+                        <div className="mt-1 text-right text-xs text-muted-foreground">
+                          {rulesForm.conversionOfferText.length}/{OFFER_MAX}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {/* Emergency keywords */}
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-foreground">
+                      Emergency keywords
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Calls mentioning these are flagged urgent for an owner
+                      callback.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {rulesForm.emergencyKeywords.length === 0 ? (
+                        <span className="text-xs text-muted-foreground">
+                          No keywords yet.
+                        </span>
+                      ) : (
+                        rulesForm.emergencyKeywords.map((kw, i) => (
+                          <span
+                            key={`${kw}-${i}`}
+                            className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-xs text-foreground"
+                          >
+                            {kw}
+                            <button
+                              type="button"
+                              onClick={() => removeKeyword(i)}
+                              aria-label={`Remove ${kw}`}
+                              className="text-muted-foreground transition hover:text-rose-300"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </span>
+                        ))
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        value={keywordInput}
+                        onChange={(e) => setKeywordInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === ",") {
+                            e.preventDefault();
+                            addKeyword();
+                          }
+                        }}
+                        placeholder="Add a keyword (e.g. flooding, no heat)"
+                        className="input-base"
+                      />
+                      <button
+                        type="button"
+                        onClick={addKeyword}
+                        disabled={!keywordInput.trim()}
+                        className="btn-secondary shrink-0 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Commercial jobs */}
+                  <Toggle
+                    label="Accept commercial / business-property jobs"
+                    checked={rulesForm.commercialAccepted}
+                    onChange={(v) => patchForm({ commercialAccepted: v })}
+                  />
+
+                  {/* Custom greeting */}
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="greeting-override"
+                      className="text-sm font-medium text-foreground"
+                    >
+                      Custom greeting (optional)
+                    </label>
+                    <input
+                      id="greeting-override"
+                      value={rulesForm.greetingOverride}
+                      onChange={(e) =>
+                        patchForm({
+                          greetingOverride: e.target.value.slice(
+                            0,
+                            GREETING_MAX
+                          ),
+                        })
+                      }
+                      maxLength={GREETING_MAX}
+                      placeholder="Thanks for calling Acme Plumbing…"
+                      className="input-base"
+                    />
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-muted-foreground">
+                        Leave blank to use the default greeting.
+                      </p>
+                      <span className="text-xs text-muted-foreground">
+                        {rulesForm.greetingOverride.length}/{GREETING_MAX}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Save row */}
+                <div className="border-t border-white/5 pt-4">
+                  {rulesSaveError ? (
+                    <div className="mb-3 flex items-start gap-2 rounded-md border border-rose-400/20 bg-rose-400/5 p-3 text-sm text-rose-300">
+                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                      <span>{rulesSaveError}</span>
+                    </div>
+                  ) : null}
+                  {rulesSaved ? (
+                    <div className="mb-3 flex items-start gap-2 rounded-md border border-emerald-400/20 bg-emerald-400/5 p-3 text-sm text-emerald-300">
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                      <span>Business rules saved.</span>
+                    </div>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={saveRules}
+                    disabled={rulesSaving || !rulesDirty}
+                    className="btn-primary disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {rulesSaving ? "Saving…" : "Save business rules"}
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </div>
         </section>
       </div>
