@@ -46,11 +46,14 @@ export type Technician = {
   createdAt?: string | null;
 };
 
-/** "08:00" → "8", "17:30" → "5:30" — compact, no am/pm. */
+/** "08:00" → "8 AM", "17:00" → "5 PM", "13:30" → "1:30 PM" — 12-hour display
+ * only; drops minutes when :00. Does not change what's stored. */
 function shortTime(t: string): string {
   const [h, m] = t.split(":");
-  const hr = String(Number(h));
-  return m && m !== "00" ? `${hr}:${m}` : hr;
+  const hour24 = Number(h);
+  const period = hour24 < 12 ? "AM" : "PM";
+  const hr = hour24 % 12 || 12;
+  return m && m !== "00" ? `${hr}:${m} ${period}` : `${hr} ${period}`;
 }
 
 /**
