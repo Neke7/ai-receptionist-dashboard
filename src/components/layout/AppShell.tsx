@@ -8,6 +8,7 @@ import {
   PhoneCall,
   Users,
   BarChart3,
+  CalendarDays,
   CreditCard,
   LogOut,
   Menu,
@@ -40,6 +41,7 @@ const CLIENT_NAV: NavItem[] = [
   { href: "/calls", label: "Calls", icon: PhoneCall },
   { href: "/customers", label: "Customers", icon: Users },
   { href: "/technicians", label: "Technicians", icon: Wrench },
+  { href: "/appointments", label: "Appointments", icon: CalendarDays },
   { href: "/billing", label: "Billing", icon: CreditCard },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
