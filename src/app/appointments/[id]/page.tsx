@@ -76,7 +76,13 @@ function SuggestionRow({
   busy: boolean;
   onSelect: () => void;
 }) {
-  const reason = s.matchReason?.trim() || (isMatch(s) ? "Skill match" : "");
+  // matchReason is a string[] (e.g. ["HVAC"]); join it. Unmatched techs have an
+  // empty array, so no badge shows for them.
+  const reason =
+    (Array.isArray(s.matchReason) ? s.matchReason : [])
+      .map((r) => String(r).trim())
+      .filter(Boolean)
+      .join(", ") || (isMatch(s) ? "Skill match" : "");
   return (
     <button
       type="button"

@@ -51,7 +51,9 @@ export type Suggestion = {
   skills: string[];
   serviceAreaZips: string[];
   matchScore: number;
-  matchReason: string | null;
+  // Backend returns these as arrays of strings (e.g. ["HVAC"], ["ac","tune-up"]).
+  // Unmatched techs come back with an empty array, not null.
+  matchReason: string[];
   matchedTerms: string[];
 };
 
