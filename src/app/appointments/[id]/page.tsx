@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
+  AlertTriangle,
   ArrowLeft,
   Check,
   Sparkles,
@@ -15,9 +16,11 @@ import AppointmentStatusBadge from "@/components/appointment-status-badge";
 import { formatDateTime } from "@/lib/calls";
 import {
   type Appointment,
+  type ReasonBadge,
   type Suggestion,
   APPOINTMENT_STATUSES,
   appointmentStatusLabel,
+  classifyReasons,
   isMatch,
   isUnassigned,
 } from "@/lib/appointments";
@@ -55,12 +58,22 @@ function SkillPills({ skills }: { skills: string[] }) {
   );
 }
 
-/** A "why suggested" badge, e.g. "HVAC match". */
-function MatchBadge({ reason }: { reason: string }) {
+/** A single "why suggested" badge. Positive reasons (skill/coverage matches)
+ * get the indigo match color; the "outside service area" caution gets a distinct
+ * amber warning style so it can't be misread as a plus. */
+function ReasonBadge({ label, tone }: ReasonBadge) {
+  if (tone === "warning") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[11px] font-medium text-amber-300">
+        <AlertTriangle className="h-3 w-3" />
+        {label}
+      </span>
+    );
+  }
   return (
     <span className="inline-flex items-center gap-1 rounded-full border border-indigo-400/20 bg-indigo-400/5 px-2 py-0.5 text-[11px] font-medium text-indigo-300">
       <Sparkles className="h-3 w-3" />
-      {reason}
+      {label}
     </span>
   );
 }
@@ -76,13 +89,10 @@ function SuggestionRow({
   busy: boolean;
   onSelect: () => void;
 }) {
-  // matchReason is a string[] (e.g. ["HVAC"]); join it. Unmatched techs have an
-  // empty array, so no badge shows for them.
-  const reason =
-    (Array.isArray(s.matchReason) ? s.matchReason : [])
-      .map((r) => String(r).trim())
-      .filter(Boolean)
-      .join(", ") || (isMatch(s) ? "Skill match" : "");
+  // Each matchReason entry renders as its own badge, styled by tone (positive
+  // skill/coverage match vs. an "outside service area" caution). Unmatched techs
+  // have an empty array, so no badges show for them.
+  const reasons = classifyReasons(s);
   return (
     <button
       type="button"
@@ -97,9 +107,11 @@ function SuggestionRow({
       ].join(" ")}
     >
       <div className="min-w-0">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-medium text-foreground">{s.name}</span>
-          {isMatch(s) && reason ? <MatchBadge reason={reason} /> : null}
+          {reasons.map((r, i) => (
+            <ReasonBadge key={`${r.label}-${i}`} label={r.label} tone={r.tone} />
+          ))}
         </div>
         <SkillPills skills={s.skills} />
       </div>

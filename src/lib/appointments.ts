@@ -43,6 +43,14 @@ export type Appointment = {
   technician: AppointmentTechnician | null;
 };
 
+/** Structured ZIP-coverage flag the backend attaches to each suggestion:
+ *   "exact"      → the tech's service area lists the appointment ZIP
+ *   "covers_all" → the tech has no ZIP restriction (covers every area)
+ *   "uncovered"  → the appointment ZIP is outside the tech's service area (a caution)
+ *   null         → the appointment has no ZIP, so the signal is disabled
+ * May be absent on older backend responses; treat absent as null. */
+export type ZipMatch = "exact" | "covers_all" | "uncovered" | null;
+
 /** A ranked technician suggestion for an appointment. matchScore >= 1 means the
  * tech's skills/area matched the service; suggestions arrive matched-first. */
 export type Suggestion = {
@@ -52,10 +60,42 @@ export type Suggestion = {
   serviceAreaZips: string[];
   matchScore: number;
   // Backend returns these as arrays of strings (e.g. ["HVAC"], ["ac","tune-up"]).
-  // Unmatched techs come back with an empty array, not null.
+  // Unmatched techs come back with an empty array, not null. Skill badges come
+  // first, then a single ZIP badge ("Covers 77019" / "Outside service area").
   matchReason: string[];
   matchedTerms: string[];
+  // Structured coverage flag (see ZipMatch). Drives warning styling on the ZIP
+  // badge so we don't have to string-match the human-readable text.
+  zipMatch?: ZipMatch;
 };
+
+/** A single "why suggested" badge, classified by tone so the UI can style
+ * positive reasons (skill/coverage matches) apart from cautions. */
+export type ReasonBadge = { label: string; tone: "positive" | "warning" };
+
+/**
+ * Split a suggestion's matchReason into individually-styled badges.
+ *
+ * Positive reasons (skill matches like "HVAC", coverage like "Covers 77019")
+ * read as a plus; the lone "outside the service area" caution reads as a
+ * warning. The structured zipMatch flag drives the warning detection — the
+ * trailing ZIP badge on an "uncovered" tech is the caution — and we fall back
+ * to matching the "Outside service area" text when the flag is absent.
+ */
+export function classifyReasons(
+  s: Pick<Suggestion, "matchReason" | "zipMatch">
+): ReasonBadge[] {
+  const reasons = (Array.isArray(s.matchReason) ? s.matchReason : [])
+    .map((r) => String(r).trim())
+    .filter(Boolean);
+  return reasons.map((label, i) => {
+    const isTrailingZip = i === reasons.length - 1;
+    const warning =
+      (s.zipMatch === "uncovered" && isTrailingZip) ||
+      label.toLowerCase() === "outside service area";
+    return { label, tone: warning ? "warning" : "positive" };
+  });
+}
 
 /** True when an appointment still needs a technician — the dispatch signal. */
 export function isUnassigned(a: Pick<Appointment, "technicianId">): boolean {
