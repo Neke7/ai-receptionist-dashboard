@@ -501,7 +501,10 @@ function Footer() {
 
       <div className="border-t border-white/5">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-6 text-xs text-muted-foreground md:flex-row md:items-center md:justify-between md:px-8">
-          <div>© {new Date().getFullYear()} Oxphi. All rights reserved.</div>
+          <div className="flex flex-col gap-1">
+            <div>© {new Date().getFullYear()} Oxphi. All rights reserved.</div>
+            <div>Oxphi is operated by Matthew Aneke.</div>
+          </div>
           <div className="flex flex-wrap items-center gap-4">
             <Link href="/terms" className="transition hover:text-foreground">
               Terms of Service

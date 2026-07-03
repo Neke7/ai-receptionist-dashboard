@@ -12,7 +12,6 @@ export default function SmsConsentPage() {
   const handleSubmit = () => {
     setError('');
     if (!phone.trim()) { setError('Please enter your mobile phone number.'); return; }
-    if (!consent) { setError('Please check the box to consent to SMS notifications.'); return; }
     setSubmitted(true);
   };
 
@@ -26,7 +25,14 @@ export default function SmsConsentPage() {
           name, phone number, the nature of the call, and a link to the full call details in
           your secure Oxphi dashboard.
         </p>
+        <p className="mt-4 text-[15px] leading-7 text-foreground/90">
+          SMS opt-in is completely optional. You can use Oxphi without agreeing to
+          receive text messages — if you choose not to opt in, we&apos;ll send your
+          call notifications by email instead. Consent to SMS is never required to
+          create an account or use the service.
+        </p>
         <ul className="mt-4 list-disc pl-6 text-[15px] leading-7 text-foreground/85 space-y-1">
+          <li>Opting in to SMS is optional — email notifications are available as an alternative.</li>
           <li>Message frequency varies based on your call volume.</li>
           <li>Message and data rates may apply.</li>
           <li>Reply STOP to unsubscribe at any time. Reply HELP for help.</li>
@@ -34,7 +40,9 @@ export default function SmsConsentPage() {
         </ul>
         {submitted ? (
           <div className="mt-8 rounded-lg border border-emerald-400/20 bg-emerald-400/5 p-4 text-emerald-300">
-            Thanks — you&apos;re subscribed to Oxphi call notifications. Reply STOP at any time to opt out.
+            {consent
+              ? 'Thanks — you’re subscribed to Oxphi call notifications by SMS. Reply STOP at any time to opt out.'
+              : 'Thanks — your details are saved. You did not opt in to SMS, so we’ll send your call notifications by email. You can opt in to text messages any time.'}
           </div>
         ) : (
           <div className="mt-8 space-y-4">
@@ -44,10 +52,10 @@ export default function SmsConsentPage() {
             </div>
             <label className="flex items-start gap-3 text-sm text-foreground/85">
               <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1 accent-indigo-500" />
-              <span>I agree to receive SMS notifications from Oxphi about calls handled by my AI receptionist, at the phone number provided. Message frequency varies. Msg &amp; data rates may apply. Reply STOP to opt out, HELP for help. See our <Link href="/privacy" className="text-indigo-400 underline underline-offset-4 hover:text-indigo-300">Privacy Policy</Link> and <Link href="/terms" className="text-indigo-400 underline underline-offset-4 hover:text-indigo-300">Terms</Link>.</span>
+              <span><span className="font-medium text-foreground">(Optional)</span> I agree to receive SMS notifications from Oxphi about calls handled by my AI receptionist, at the phone number provided. This is optional — you can leave it unchecked and still submit, and we&apos;ll notify you by email instead. Message frequency varies. Msg &amp; data rates may apply. Reply STOP to opt out, HELP for help. See our <Link href="/privacy" className="text-indigo-400 underline underline-offset-4 hover:text-indigo-300">Privacy Policy</Link> and <Link href="/terms" className="text-indigo-400 underline underline-offset-4 hover:text-indigo-300">Terms</Link>.</span>
             </label>
             {error && <p className="text-sm text-rose-400">{error}</p>}
-            <button onClick={handleSubmit} className="btn-primary">Subscribe to notifications</button>
+            <button onClick={handleSubmit} className="btn-primary">Save &amp; continue</button>
           </div>
         )}
       </main>
