@@ -9,6 +9,7 @@ import {
   Users,
   BarChart3,
   CalendarDays,
+  Gauge,
   CreditCard,
   LogOut,
   Menu,
@@ -42,6 +43,7 @@ const CLIENT_NAV: NavItem[] = [
   { href: "/customers", label: "Customers", icon: Users },
   { href: "/technicians", label: "Technicians", icon: Wrench },
   { href: "/appointments", label: "Appointments", icon: CalendarDays },
+  { href: "/capacity", label: "Capacity", icon: Gauge },
   { href: "/billing", label: "Billing", icon: CreditCard },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
