@@ -381,6 +381,29 @@ export default function TermsPage() {
               <a href="mailto:support@oxphi.io">support@oxphi.io</a>.
             </p>
           </Section>
+
+          <Section id="sms" title="17. SMS/Text Messaging">
+            <p>
+              By opting in, you agree to receive SMS text messages related to
+              the services you requested, such as appointment confirmations and
+              reminders. Opt-in is optional and is not a condition of using the
+              service.
+            </p>
+            <p>
+              Message frequency varies based on your activity and appointments.
+              Message and data rates may apply.
+            </p>
+            <p>
+              You can reply STOP at any time to unsubscribe and stop receiving
+              messages, or reply HELP for assistance.
+            </p>
+            <p>
+              Your mobile information and consent are used solely to deliver the
+              notifications you subscribed to, and will not be shared with or
+              sold to third parties or affiliates for marketing or promotional
+              purposes at any time.
+            </p>
+          </Section>
         </div>
       </main>
 
