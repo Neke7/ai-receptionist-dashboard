@@ -9,9 +9,6 @@ import AppShell from "@/components/layout/AppShell";
 // ============================================================
 // Payload shape — GET /api/analytics (client-scoped, read-only).
 // Mirrors the backend lib/analytics.js return. Rates are 0–1 decimals.
-// Only the blocks rendered in v1 are typed loosely; byLeadTemperature,
-// avgCallDurationSec, and newCustomersWeekly ship in the payload but are
-// intentionally NOT rendered here (reserved for v2).
 // ============================================================
 type AnalyticsResponse = {
   meta: {
@@ -22,8 +19,11 @@ type AnalyticsResponse = {
     lastCallAt: string | null;
   };
   volumeWeekly: { weekStart: string; count: number }[];
+  newCustomersWeekly: { weekStart: string; count: number }[];
   byDayOfWeek: { day: string; count: number }[];
   byOutcome: { value: string | null; count: number }[];
+  byLeadTemperature: { value: string | null; count: number }[];
+  avgCallDurationSec: number;
   conversion: {
     totalCalls: number;
     spam: number;
@@ -83,6 +83,29 @@ function outcomeFill(value: string | null): string {
     default:
       return "bg-white/15";
   }
+}
+
+/** Fill color per lead temperature — hot(orange) → warm(amber) → cold(sky),
+ *  with a muted grey for unscored. */
+function tempFill(value: string | null): string {
+  switch (value) {
+    case "hot":
+      return "bg-orange-500/55";
+    case "warm":
+      return "bg-amber-500/55";
+    case "cold":
+      return "bg-sky-500/55";
+    default:
+      return "bg-white/15";
+  }
+}
+
+/** Avg talk time in seconds → "2m 01s". Callers guard the 0/null case; this
+ *  always renders m + zero-padded s for a real duration. */
+function formatDuration(sec: number): string {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}m ${String(s).padStart(2, "0")}s`;
 }
 
 // A small summary tile — the stat-row primitive (surface + muted label + big
@@ -232,9 +255,19 @@ export default function AnalyticsPage() {
 
   // Bar normalization maxima (guard divide-by-zero).
   const maxVolume = data ? Math.max(1, ...data.volumeWeekly.map((w) => w.count)) : 1;
+  const maxNewCust = data ? Math.max(1, ...data.newCustomersWeekly.map((w) => w.count)) : 1;
   const maxOutcome = data ? Math.max(1, ...data.byOutcome.map((o) => o.count)) : 1;
   const maxDow = data ? Math.max(1, ...data.byDayOfWeek.map((d) => d.count)) : 1;
   const busiestDow = data ? Math.max(0, ...data.byDayOfWeek.map((d) => d.count)) : 0;
+  const maxTemp = data ? Math.max(1, ...data.byLeadTemperature.map((t) => t.count)) : 1;
+
+  // Lead temperature in a fixed hot→warm→cold→unscored order (not the backend's
+  // count-desc), so the scale reads consistently. Missing buckets render as 0;
+  // the null/unscored bucket is always kept — a large unscored count is signal.
+  const TEMP_ORDER: (string | null)[] = ["hot", "warm", "cold", null];
+  const tempByValue = data
+    ? new Map(data.byLeadTemperature.map((t) => [t.value, t.count]))
+    : new Map<string | null, number>();
 
   const conv = data?.conversion;
   // Funnel widths are proportional to qualifiedCalls (the baseline).
@@ -289,6 +322,27 @@ export default function AnalyticsPage() {
             <StatTile label="Confirmed Rate" value={pct(conv.confirmedRate)} />
           </div>
 
+          {/* CARD — Avg Call Duration */}
+          <Card
+            title="Avg Call Duration"
+            subtitle="Average talk time on answered calls."
+          >
+            {data.avgCallDurationSec ? (
+              <div className="text-3xl font-semibold tracking-tight text-foreground">
+                {formatDuration(data.avgCallDurationSec)}
+              </div>
+            ) : (
+              <>
+                <div className="text-3xl font-semibold tracking-tight text-muted-foreground">
+                  —
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  No answered-call talk time yet
+                </p>
+              </>
+            )}
+          </Card>
+
           {/* CARD 1 — Call Volume (weekly) */}
           <Card
             title="Call Volume (weekly)"
@@ -305,6 +359,28 @@ export default function AnalyticsPage() {
                     count={w.count}
                     widthPct={(w.count / maxVolume) * 100}
                     fill="bg-indigo-500/55"
+                  />
+                ))}
+              </div>
+            )}
+          </Card>
+
+          {/* CARD — New Customers (weekly) */}
+          <Card
+            title="New Customers (weekly)"
+            subtitle="First-time callers per week — tends to track call volume closely."
+          >
+            {data.newCustomersWeekly.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No weekly data yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {data.newCustomersWeekly.map((w) => (
+                  <BarRow
+                    key={w.weekStart}
+                    label={shortWeek(w.weekStart)}
+                    count={w.count}
+                    widthPct={(w.count / maxNewCust) * 100}
+                    fill="bg-sky-500/55"
                   />
                 ))}
               </div>
@@ -394,6 +470,30 @@ export default function AnalyticsPage() {
                     count={o.count}
                     widthPct={(o.count / maxOutcome) * 100}
                     fill={outcomeFill(o.value)}
+                  />
+                ))}
+              </div>
+            )}
+          </Card>
+
+          {/* CARD — Lead Temperature */}
+          <Card
+            title="Lead Temperature"
+            subtitle="How your callers scored as leads — including calls we couldn't score."
+          >
+            {data.byLeadTemperature.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No lead temperature data yet.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {TEMP_ORDER.map((value) => (
+                  <BarRow
+                    key={value ?? "unscored"}
+                    label={value ? outcomeLabel(value) : "Unscored"}
+                    count={tempByValue.get(value) ?? 0}
+                    widthPct={((tempByValue.get(value) ?? 0) / maxTemp) * 100}
+                    fill={tempFill(value)}
                   />
                 ))}
               </div>
