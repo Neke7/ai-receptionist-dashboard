@@ -102,6 +102,97 @@ export function isUnassigned(a: Pick<Appointment, "technicianId">): boolean {
   return !a.technicianId;
 }
 
+// ============================================================
+// Manual-appointment date/time helpers (New Appointment form).
+//
+// The backend does `new Date(startTime)`, so we must send an ISO instant with
+// an explicit offset. The owner enters a wall-clock time they mean in their
+// BUSINESS timezone (e.g. "2:00 PM" in America/Chicago), but a native
+// <input type="datetime-local"> yields a bare "2026-07-15T14:00" with no zone.
+// These helpers convert that wall clock, interpreted in the business tz, to a
+// correct UTC instant — DST-safe via Intl (Houston is CST/CDT across the year),
+// never a hardcoded offset.
+// ============================================================
+
+/** How far the given instant's wall clock in `timeZone` is ahead of UTC, in ms.
+ *  (Positive east of UTC.) Uses Intl so it tracks DST for the actual date. */
+function tzOffsetMs(instant: Date, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(instant);
+
+  const map: Record<string, string> = {};
+  for (const p of parts) map[p.type] = p.value;
+  const hour = map.hour === "24" ? "0" : map.hour; // some engines emit "24"
+
+  const asUTC = Date.UTC(
+    Number(map.year),
+    Number(map.month) - 1,
+    Number(map.day),
+    Number(hour),
+    Number(map.minute),
+    Number(map.second)
+  );
+  return asUTC - instant.getTime();
+}
+
+/**
+ * Convert a `datetime-local` value ("YYYY-MM-DDTHH:mm"), read as a wall clock in
+ * `timeZone`, to a UTC ISO string (…Z). Returns null on an unparseable value.
+ *
+ * Method: treat the wall clock as if it were UTC to get a first guess, look up
+ * the tz offset at that guess, then correct — re-checking once so a start that
+ * lands on a DST transition resolves to the offset actually in effect.
+ */
+export function wallClockToUtcISO(
+  local: string,
+  timeZone: string
+): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(local ?? "");
+  if (!m) return null;
+  const [, y, mo, d, h, mi] = m.map(Number);
+  const guessUTC = Date.UTC(y, mo - 1, d, h, mi, 0);
+
+  const offset = tzOffsetMs(new Date(guessUTC), timeZone);
+  let instant = guessUTC - offset;
+  const offset2 = tzOffsetMs(new Date(instant), timeZone);
+  if (offset2 !== offset) instant = guessUTC - offset2;
+
+  const out = new Date(instant);
+  return Number.isNaN(out.getTime()) ? null : out.toISOString();
+}
+
+/**
+ * Human echo of what a `datetime-local` value resolves to in the business tz,
+ * e.g. "Wed, Jul 15 · 2:00 PM CDT" — so the owner confirms the interpretation
+ * before submitting. Returns "" on an unparseable value.
+ */
+export function describeBusinessTime(local: string, timeZone: string): string {
+  const iso = wallClockToUtcISO(local, timeZone);
+  if (!iso) return "";
+  const d = new Date(iso);
+  const date = new Intl.DateTimeFormat(undefined, {
+    timeZone,
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  }).format(d);
+  const time = new Intl.DateTimeFormat(undefined, {
+    timeZone,
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  }).format(d);
+  return `${date} · ${time}`;
+}
+
 /** True when a suggestion is an actual skill/area match (vs. just an available
  * fallback technician listed below the matches). */
 export function isMatch(s: Pick<Suggestion, "matchScore">): boolean {
